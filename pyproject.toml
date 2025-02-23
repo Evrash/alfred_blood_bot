@@ -1,0 +1,19 @@
+[project]
+name = "alfred4"
+version = "0.1.0"
+description = "Telegram bot for Blood Service"
+authors = [
+    {name = "Anton Abramov",email = "abramov.it@yandex.ru"}
+]
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pillow (>=11.1.0,<12.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+
