@@ -1,0 +1,144 @@
+{
+    "name": "snow_image",
+    "dir": "3",
+    "size": [
+        565,
+        500
+    ],
+    "elements": {
+        "back": [
+            "back.jpg"
+        ],
+        "main": {
+            "box": {
+                "o_minus": {
+                    "position": {
+                        "x": 20,
+                        "y": 100
+                    },
+                    "image": {
+                        "red": "red_minus.png",
+                        "green": "green_minus.png",
+                        "yellow": "yellow_minus.png"
+                    }
+                },
+                "o_plus": {
+                    "position": {
+                        "x": 154,
+                        "y": 100
+                    },
+                    "image": {
+                        "red": "red_plus.png",
+                        "green": "green_plus.png",
+                        "yellow": "yellow_plus.png"
+                    }
+                },
+                "a_minus": {
+                    "position": {
+                        "x": 288,
+                        "y": 100
+                    },
+                    "image": {
+                        "red": "red_minus.png",
+                        "green": "green_minus.png",
+                        "yellow": "yellow_minus.png"
+                    }
+                },
+                "a_plus": {
+                    "position": {
+                        "x": 422,
+                        "y": 100
+                    },
+                    "image": {
+                        "red": "red_plus.png",
+                        "green": "green_plus.png",
+                        "yellow": "yellow_plus.png"
+                    }
+                },
+                "b_minus": {
+                    "position": {
+                        "x": 20,
+                        "y": 270
+                    },
+                    "image": {
+                        "red": "red_minus.png",
+                        "green": "green_minus.png",
+                        "yellow": "yellow_minus.png"
+                    }
+                },
+                "b_plus": {
+                    "position": {
+                        "x": 154,
+                        "y": 270
+                    },
+                    "image": {
+                        "red": "red_plus.png",
+                        "green": "green_plus.png",
+                        "yellow": "yellow_plus.png"
+                    }
+                },
+                "ab_minus": {
+                    "position": {
+                        "x": 288,
+                        "y": 270
+                    },
+                    "image": {
+                        "red": "red_minus.png",
+                        "green": "green_minus.png",
+                        "yellow": "yellow_minus.png"
+                    }
+                },
+                "ab_plus": {
+                    "position": {
+                        "x": 422,
+                        "y": 270
+                    },
+                    "image": {
+                        "red": "red_plus.png",
+                        "green": "green_plus.png",
+                        "yellow": "yellow_plus.png"
+                    }
+                }
+            }
+        },
+        "additional": {
+            "snow": {
+                "random": 1,
+                "position": [
+                    [
+                        16,
+                        85
+                    ],
+                    [
+                        150,
+                        85
+                    ],
+                    [
+                        284,
+                        85
+                    ],
+                    [
+                        418,
+                        85
+                    ],
+                    [
+                        16,
+                        255
+                    ],
+                    [
+                        150,
+                        255
+                    ],
+                    [
+                        284,
+                        255
+                    ],
+                    [
+                        418,
+                        255
+                    ]
+                ]
+            }
+        }
+    }
+}

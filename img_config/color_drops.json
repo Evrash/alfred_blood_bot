@@ -1,0 +1,146 @@
+{
+    "name": "color_drops",
+    "dir": "1",
+    "size": [
+        1000,
+        1000
+    ],
+    "elements": {
+        "back": [
+            "1.jpg",
+            "2.jpg",
+            "3.jpg",
+            "4.jpg",
+            "5.jpg",
+            "6.jpg",
+            "7.jpg"
+        ],
+        "main": {
+            "drops": {
+                "o_minus": {
+                    "position": {
+                        "x": 11,
+                        "y": 150
+                    },
+                    "image": {
+                        "red": "red_minus.png",
+                        "green": "green_minus.png",
+                        "yellow": "yellow_minus.png"
+                    }
+                },
+                "o_plus": {
+                    "position": {
+                        "x": 241,
+                        "y": 150
+                    },
+                    "image": {
+                        "red": "red_plus.png",
+                        "green": "green_plus.png",
+                        "yellow": "yellow_plus.png"
+                    }
+                },
+                "a_minus": {
+                    "position": {
+                        "x": 511,
+                        "y": 150
+                    },
+                    "image": {
+                        "red": "red_minus.png",
+                        "green": "green_minus.png",
+                        "yellow": "yellow_minus.png"
+                    }
+                },
+                "a_plus": {
+                    "position": {
+                        "x": 741,
+                        "y": 150
+                    },
+                    "image": {
+                        "red": "red_plus.png",
+                        "green": "green_plus.png",
+                        "yellow": "yellow_plus.png"
+                    }
+                },
+                "b_minus": {
+                    "position": {
+                        "x": 11,
+                        "y": 650
+                    },
+                    "image": {
+                        "red": "red_minus.png",
+                        "green": "green_minus.png",
+                        "yellow": "yellow_minus.png"
+                    }
+                },
+                "b_plus": {
+                    "position": {
+                        "x": 241,
+                        "y": 650
+                    },
+                    "image": {
+                        "red": "red_plus.png",
+                        "green": "green_plus.png",
+                        "yellow": "yellow_plus.png"
+                    }
+                },
+                "ab_minus": {
+                    "position": {
+                        "x": 511,
+                        "y": 650
+                    },
+                    "image": {
+                        "red": "red_minus.png",
+                        "green": "green_minus.png",
+                        "yellow": "yellow_minus.png"
+                    }
+                },
+                "ab_plus": {
+                    "position": {
+                        "x": 741,
+                        "y": 650
+                    },
+                    "image": {
+                        "red": "red_plus.png",
+                        "green": "green_plus.png",
+                        "yellow": "yellow_plus.png"
+                    }
+                }
+            }
+        },
+        "additional": {
+            "group_title": {
+                "random": 0,
+                "items": {
+                    "o": {
+                        "position": {
+                            "x": 37,
+                            "y": 0
+                        },
+                        "image": "1st.png"
+                    },
+                    "a": {
+                        "position": {
+                            "x": 537,
+                            "y": 0
+                        },
+                        "image": "2nd.png"
+                    },
+                    "b": {
+                        "position": {
+                            "x": 37,
+                            "y": 500
+                        },
+                        "image": "3rd.png"
+                    },
+                    "ab": {
+                        "position": {
+                            "x": 537,
+                            "y": 500
+                        },
+                        "image": "4th.png"
+                    }
+                }
+            }
+        }
+    }
+}
