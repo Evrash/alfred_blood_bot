@@ -5,24 +5,36 @@ import datetime
 from PIL import Image
 
 class LightImage(object):
+    """
+    Основной класс донорского светофора.
+    """
     def __init__(self, image_info, template, org=None):
         self.image_info=image_info
         self.template = template
         self.org = org
 
     def draw_image(self):
+        """
+        Создаёт итоговое изображение. Берётся основа, на неё наносятся другие изображения.
+        Передаётся строка содержащая цвет светофора для каждой группы крови.
+        Изображения делятся на зависящие и не зависящие от группы крови.
+        :return:
+        """
         if not os.path.exists(f'img/{self.org}'): os.makedirs(f'img/{self.org}')
         image: Image = Image.new('RGBA', (self.image_info['size']))
         image = Image.alpha_composite(image, Image.open(
             f'img_templates/{self.image_info['dir']}/back/{random.choice(self.image_info['elements']['back'])}').convert('RGBA'))
+
+        # Размещаем элементы, зависимые от шаблона
         for element_name, element_value in self.image_info['elements']['main'].items():
             for key, value in element_value.items():
                 path = f'img_templates/{self.image_info['dir']}/{element_name}/{value['image'][self.template[key]]}'
                 open_image = Image.open(path).convert("RGBA")
                 image.paste(open_image, (value['position']['x'], value['position']['y']), open_image)
 
+        # Размещаем элементы не зависимые от шаблона
         for element_name, element_value in self.image_info['elements']['additional'].items():
-            if element_value['random'] == 0:
+            if element_value['random'] == 0: # Нужно ли размещать элементы в случайном порядке
                 for key, value in element_value['items'].items() :
                     path = f'img_templates/{self.image_info['dir']}/{element_name}/{value['image']}'
                     image.paste(Image.open(path), (value['position']['x'], value['position']['y']), Image.open(path))
