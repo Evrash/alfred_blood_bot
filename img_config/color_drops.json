@@ -108,36 +108,37 @@
             }
         },
         "additional": {
-            "group_title": {
-                "random": 0,
-                "items": {
-                    "o": {
-                        "position": {
-                            "x": 37,
-                            "y": 0
+            "positional": {
+                "group_title": {
+                    "items": {
+                        "o": {
+                            "position": {
+                                "x": 37,
+                                "y": 0
+                            },
+                            "image": "1st.png"
                         },
-                        "image": "1st.png"
-                    },
-                    "a": {
-                        "position": {
-                            "x": 537,
-                            "y": 0
+                        "a": {
+                            "position": {
+                                "x": 537,
+                                "y": 0
+                            },
+                            "image": "2nd.png"
                         },
-                        "image": "2nd.png"
-                    },
-                    "b": {
-                        "position": {
-                            "x": 37,
-                            "y": 500
+                        "b": {
+                            "position": {
+                                "x": 37,
+                                "y": 500
+                            },
+                            "image": "3rd.png"
                         },
-                        "image": "3rd.png"
-                    },
-                    "ab": {
-                        "position": {
-                            "x": 537,
-                            "y": 500
-                        },
-                        "image": "4th.png"
+                        "ab": {
+                            "position": {
+                                "x": 537,
+                                "y": 500
+                            },
+                            "image": "4th.png"
+                        }
                     }
                 }
             }
