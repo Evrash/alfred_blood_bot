@@ -1,4 +1,4 @@
-from draw_image2 import LightImage
+from draw_image import LightImage
 
 light_template = {'o_plus': 'red', 'o_minus':'green',
                   'a_plus': 'yellow', 'a_minus':'red',
