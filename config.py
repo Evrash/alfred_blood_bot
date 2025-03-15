@@ -1,7 +1,18 @@
 from pathlib import Path
+from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).parent
+
+class BloodGroups(BaseModel):
+    o_plus: str = '🅾️➕'
+    o_minus: str = '🅾️➖'
+    a_plus: str = '🅰️➕'
+    a_minus: str = '🅰️️➖'
+    b_plus: str = '🅱️➕'
+    b_minus: str = '🅱️➖'
+    ab_plus: str = '🆎➕'
+    ab_minus: str = '🆎➖'
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -12,5 +23,6 @@ class Settings(BaseSettings):
     )
     base_dir:Path = BASE_DIR
     token: str = ''
+    group: BloodGroups = BloodGroups()
 
 settings = Settings()
