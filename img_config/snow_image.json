@@ -11,20 +11,9 @@
         ],
         "main": {
             "box": {
-                "o_minus": {
-                    "position": {
-                        "x": 20,
-                        "y": 100
-                    },
-                    "image": {
-                        "red": "red_minus.png",
-                        "green": "green_minus.png",
-                        "yellow": "yellow_minus.png"
-                    }
-                },
                 "o_plus": {
                     "position": {
-                        "x": 154,
+                        "x": 20,
                         "y": 100
                     },
                     "image": {
@@ -33,9 +22,9 @@
                         "yellow": "yellow_plus.png"
                     }
                 },
-                "a_minus": {
+                "o_minus": {
                     "position": {
-                        "x": 288,
+                        "x": 154,
                         "y": 100
                     },
                     "image": {
@@ -46,7 +35,7 @@
                 },
                 "a_plus": {
                     "position": {
-                        "x": 422,
+                        "x": 288,
                         "y": 100
                     },
                     "image": {
@@ -55,10 +44,10 @@
                         "yellow": "yellow_plus.png"
                     }
                 },
-                "b_minus": {
+                "a_minus": {
                     "position": {
-                        "x": 20,
-                        "y": 270
+                        "x": 422,
+                        "y": 100
                     },
                     "image": {
                         "red": "red_minus.png",
@@ -68,7 +57,7 @@
                 },
                 "b_plus": {
                     "position": {
-                        "x": 154,
+                        "x": 20,
                         "y": 270
                     },
                     "image": {
@@ -77,9 +66,9 @@
                         "yellow": "yellow_plus.png"
                     }
                 },
-                "ab_minus": {
+                "b_minus": {
                     "position": {
-                        "x": 288,
+                        "x": 154,
                         "y": 270
                     },
                     "image": {
@@ -90,13 +79,24 @@
                 },
                 "ab_plus": {
                     "position": {
-                        "x": 422,
+                        "x": 288,
                         "y": 270
                     },
                     "image": {
                         "red": "red_plus.png",
                         "green": "green_plus.png",
                         "yellow": "yellow_plus.png"
+                    }
+                },
+                "ab_minus": {
+                    "position": {
+                        "x": 422,
+                        "y": 270
+                    },
+                    "image": {
+                        "red": "red_minus.png",
+                        "green": "green_minus.png",
+                        "yellow": "yellow_minus.png"
                     }
                 }
             }
