@@ -43,6 +43,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id=update.effective_chat.id, text=ts.MESSAGE_START)
 
 async def start_image_inline(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Старт генерации донорского светофора"""
     context.user_data['yellow_list'] = []
     context.user_data['red_list'] = []
     inline_keyboard = get_keyboard(STEP_YELLOW, STEP_RED, ts.BTN_RED)
@@ -52,6 +53,7 @@ async def start_image_inline(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return MAKE_IMAGE
 
 async def more_yellow_inline(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Выбор жёлтых групп крови"""
     query = update.callback_query
     print(query.data)
     blood_group: str = query.data.split('__')[-1]
@@ -70,6 +72,7 @@ async def more_yellow_inline(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return MAKE_IMAGE
 
 async def red_inline(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Выбор красных групп крови"""
     query = update.callback_query
     print(query.data)
     await query.answer()
@@ -97,6 +100,7 @@ async def red_inline(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return MAKE_IMAGE
 
 async def light_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Получение и отправка картинки со светофором"""
     query = update.callback_query
     await query.answer()
     light_template = {'o_plus': 'green', 'o_minus': 'green',

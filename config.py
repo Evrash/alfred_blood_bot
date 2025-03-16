@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).parent
+DB_PATH = BASE_DIR / 'db.sqlite3'
 
 class BloodGroups(BaseModel):
     o_plus: str = '🅾️➕'
@@ -13,6 +14,9 @@ class BloodGroups(BaseModel):
     b_minus: str = '🅱️➖'
     ab_plus: str = '🆎➕'
     ab_minus: str = '🆎➖'
+
+class DbSettings(BaseModel):
+    url: str = f"sqlite+aiosqlite:///{DB_PATH}"
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
