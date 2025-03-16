@@ -19,6 +19,7 @@ class LightImage(object):
         self.image_template=ImageConfig.model_validate_json(json_config)
         self.light_template = light_template
         self.org = org
+        self.image_name: Path|None = None
 
     # def paste_element_on_image(self, image:Image, element_path: Path, position:tuple[int, int]):
     #     open_image = Image.open(element_path).convert('RGBA')
@@ -66,3 +67,4 @@ class LightImage(object):
         image_name = (settings.base_dir / f'img/{self.org}'/
                       f'{datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}-{self.image_template.name}.png')
         image.save(image_name)
+        self.image_name = image_name
