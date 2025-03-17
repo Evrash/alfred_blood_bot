@@ -1,7 +1,7 @@
-from poetry.core.masonry.metadata import Metadata
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy import func, MetaData, Boolean, String, Integer, DateTime
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy import func, MetaData, Boolean, String, Integer, DateTime, ForeignKey
 from datetime import datetime
+from typing import List
 
 from config import settings
 
@@ -36,4 +36,12 @@ class Organisation(Base):
     start_text: Mapped[str] = mapped_column(String, nullable=True)
     end_text: Mapped[str] = mapped_column(String, nullable=True)
     notification_time: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+    users: Mapped[List['User']] = relationship(back_populates='organisation')
+
+class User(Base):
+    __tablename__ = 'users'
+
+    organisation_id: Mapped[int] = mapped_column(ForeignKey('organisations.id'), unique=True, nullable=True)
+    organisation: Mapped['Organisation'] = relationship(back_populates='users')
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
 
