@@ -5,6 +5,7 @@ from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, Conve
 from config import settings
 import text_strings as ts
 from draw_image import LightImage
+import models.crud as crud
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -40,6 +41,7 @@ def get_text_from_groups(groups: list):
     return ''
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await crud.get_or_create(tg_id=update.effective_chat.id)
     await context.bot.send_message(chat_id=update.effective_chat.id, text=ts.MESSAGE_START)
 
 async def start_image_inline(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
