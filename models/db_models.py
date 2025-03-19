@@ -41,6 +41,7 @@ class Organisation(Base):
 class User(Base):
     __tablename__ = 'users'
 
+    tg_id: Mapped[str] = mapped_column(String, nullable=False)
     organisation_id: Mapped[int] = mapped_column(ForeignKey('organisations.id'), unique=True, nullable=True)
     organisation: Mapped['Organisation'] = relationship(back_populates='users')
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
