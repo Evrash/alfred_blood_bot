@@ -1,4 +1,6 @@
 import logging
+from typing import TYPE_CHECKING
+
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, ConversationHandler, MessageHandler, filters, CallbackQueryHandler
 
@@ -6,6 +8,10 @@ from config import settings
 import text_strings as ts
 from draw_image import LightImage
 import models.crud as crud
+from models.crud import get_user, create_user
+
+if TYPE_CHECKING:
+    from models import User, Organisation
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -130,6 +136,39 @@ async def light_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cancel(update:Update, context:ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Выполнение задание прервано.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
+
+# Функции для сбора информации о пользователе
+async def set_info_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user: User = crud.get_user(tg_id=update.effective_user.id)
+    if not user:
+        user = crud.create_user(tg_id=update.effective_user.id)
+    if user.organisation_id is None:
+        # context.user_data['User'] = User.get(User.telegram_chat_id == update.effective_user.id)
+        message = ts.SET_INFO_ORG_NAME
+        await update.message.reply_text(message)
+        return ORG_NAME
+    else:
+        await update.message.reply_text(ts.SET_INFO_DBL_REG)
+        return ConversationHandler.END
+
+async def set_info_org(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    org = crud.get_organisation_by_name(name=update.message.text.strip())
+    if org:
+        await update.message.reply_text(ts.SET_INFO_SAME_ORG)
+        return ConversationHandler.END
+    org: Organisation = crud.create_organisation(name=update.message.text)
+    user: User = crud.get_user(tg_id=update.effective_user.id)
+    user.organisation = org
+    user.is_admin = 1
+    user.save()
+    context.user_data['org'] = org
+    message = ts.SET_INFO_EXPL
+    await update.message.reply_text(message)
+    message = ts.SET_INFO_EXPL_QUEST
+    reply_keyboard = [[ts.BTN_GRANT_ALL], [ts.BTN_GRANT_VK], [ts.BTN_GRANT_VK], [ts.BTN_GRANT_NONE]]
+    await update.message.reply_text(message, reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
+    return STEP_CHOICE
+
 
 if __name__ == '__main__':
     application = ApplicationBuilder().token(settings.token).build()
