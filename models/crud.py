@@ -1,6 +1,8 @@
 from more_itertools.more import with_iter
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+# from sqlalchemy.orm.sync import update
+
 from models import User, db_helper, Organisation
 from sqlalchemy.orm import selectinload
 import asyncio
@@ -44,6 +46,26 @@ async def create_organisation(name: str) -> Organisation:
         await conn.commit()
         return org
 
+async def user_set_org(user: User):
+    async with (db_helper.session_factory() as conn):
+        stmt = (
+            update(User)
+            .values(organisation_id = user.organisation.id, is_admin=user.is_admin)
+            .filter_by(id=user.id)
+        )
+        print(stmt)
+        await conn.execute(stmt)
+        await conn.commit()
+
 # async def get_user_org(tg_id: int) -> Organisation:
 #     async with db_helper.session_factory() as conn:
 #         stmt = select(Organisation).options(selectinload(User.tg_id))
+
+async def main():
+    user = await get_user(154276194)
+    user.is_admin = True
+    org = await get_organisation_by_name('Test')
+    user.organisation = org
+    await user_set_org(user=user)
+
+asyncio.run(main())

@@ -139,9 +139,9 @@ async def cancel(update:Update, context:ContextTypes.DEFAULT_TYPE):
 
 # Функции для сбора информации о пользователе
 async def set_info_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user: User = crud.get_user(tg_id=update.effective_user.id)
+    user: User = await crud.get_user(tg_id=update.effective_user.id)
     if not user:
-        user = crud.create_user(tg_id=update.effective_user.id)
+        user = await crud.create_user(tg_id=update.effective_user.id)
     if user.organisation_id is None:
         # context.user_data['User'] = User.get(User.telegram_chat_id == update.effective_user.id)
         message = ts.SET_INFO_ORG_NAME
@@ -152,15 +152,16 @@ async def set_info_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
 
 async def set_info_org(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    org = crud.get_organisation_by_name(name=update.message.text.strip())
+    org = await crud.get_organisation_by_name(name=update.message.text.strip())
     if org:
         await update.message.reply_text(ts.SET_INFO_SAME_ORG)
+        #TODO: Добвить сброс организации
         return ConversationHandler.END
-    org: Organisation = crud.create_organisation(name=update.message.text)
-    user: User = crud.get_user(tg_id=update.effective_user.id)
+    org: Organisation = await crud.create_organisation(name=update.message.text)
+    user: User = await crud.get_user(tg_id=update.effective_user.id)
     user.organisation = org
-    user.is_admin = 1
-    user.save()
+    user.is_admin = True
+    await crud.user_set_org(user=user)
     context.user_data['org'] = org
     message = ts.SET_INFO_EXPL
     await update.message.reply_text(message)
@@ -169,6 +170,66 @@ async def set_info_org(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(message, reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
     return STEP_CHOICE
 
+async def yd_ids(url, login, password):
+    s = requests.Session()
+    r = s.post('https://adm.yadonor.ru/index.php?obj=BLOOD_STATIONS', data={'login': login, 'password': password})
+    # TODO: добавить проверку ту ли ссылку нам пихнули
+    params_url = url.split('?')[1]
+    station_id = ''
+    for param in params_url.split('&'):
+        if param.split('=')[0] == 'BLOOD_STATIONS_ID':
+            station_id = param.split('=')[1]
+    r = s.get(url)
+    soup = BeautifulSoup(r.text, 'html.parser')
+    soup = soup.find_all(attrs={'name': re.compile('reserv')})
+    groups = []
+    for block in soup:
+        if block.get('name')[7:10] not in groups:
+            groups.append(block.get('name')[7:10])
+    # print(groups)
+    ready_groups = [groups[0], groups[4], groups[1], groups[5], groups[2], groups[6], groups[3], groups[7]]
+    return ready_groups, station_id
+
+async def get_vk_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Если отдаёт всё, то сначала сохраняем параметры ЯД
+    if context.user_data['choice'] in [3, 1]:
+        DB.connect(reuse_if_open=True)
+        groups, station_id = yd_ids(url=update.message.text, login=decode_str(context.user_data['org'].yd_login),
+                                    password=decode_str(context.user_data['org'].yd_pass))
+        context.user_data['org'].yd_station_id = station_id
+        context.user_data['org'].yd_groups_ids = ','.join(groups)
+        context.user_data['org'].save()
+        if context.user_data['choice'] == 1:
+            await update.message.reply_text(tstr.SET_INFO_YD_OK)
+            DB.close()
+            return ConversationHandler.END
+        else:
+            await update.message.reply_text(f"{tstr.SET_INFO_YD_OK} Займёмся ВК")
+    message = tstr.SET_INFO_VK_TOKEN
+    await update.message.reply_text(message, reply_markup=ReplyKeyboardRemove())
+    DB.close()
+    return VK_TOKEN
+
+async def set_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # update.message.reply_text(reply_markup = ReplyKeyboardRemove())
+    match update.message.text:
+        case ts.BTN_GRANT_ALL:
+            context.user_data['choice'] = 'ALL'
+            await update.message.reply_text(ts.SET_INFO_CHOOSE_ALL)
+            await update.message.reply_text(ts.SET_INFO_YD_LOGIN, reply_markup=ReplyKeyboardRemove())
+            return YD_LOGIN
+        case ts.BTN_GRANT_YD:
+            context.user_data['choice'] = 'YD'
+            await update.message.reply_text(ts.SET_INFO_CHOOSE_YD)
+            await update.message.reply_text(ts.SET_INFO_YD_LOGIN, reply_markup=ReplyKeyboardRemove())
+            return YD_LOGIN
+        case ts.BTN_GRANT_VK:
+            context.user_data['choice'] = 'VK'
+            await update.message.reply_text(ts.SET_INFO_CHOOSE_VK)
+            return await get_vk_token(update, context)
+        case _:
+            await update.message.reply_text('Хорошо')
+            return ConversationHandler.END
 
 if __name__ == '__main__':
     application = ApplicationBuilder().token(settings.token).build()
