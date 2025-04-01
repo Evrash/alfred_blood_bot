@@ -57,9 +57,30 @@ async def user_set_org(user: User):
         await conn.execute(stmt)
         await conn.commit()
 
+async def org_set_token(org: Organisation):
+    async with (db_helper.session_factory() as conn):
+        stmt = (
+            update(Organisation)
+            .values(vk_token = org.vk_token)
+            .filter_by(id=org.id)
+        )
+        print(stmt)
+        await conn.execute(stmt)
+        await conn.commit()
+
+# async def update_user(user: User):
+
 # async def get_user_org(tg_id: int) -> Organisation:
 #     async with db_helper.session_factory() as conn:
 #         stmt = select(Organisation).options(selectinload(User.tg_id))
+
+async def main():
+    user: User = await get_user(tg_id=154276194)
+    org: Organisation = await get_organisation_by_name(name='Test')
+    user.organisation_id = org.id
+    print(user.organisation_id)
+
+asyncio.run(main())
 
 async def main():
     user = await get_user(154276194)

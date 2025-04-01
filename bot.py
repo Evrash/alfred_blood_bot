@@ -1,6 +1,7 @@
 import logging
 from typing import TYPE_CHECKING
 
+from pyexpat.errors import messages
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, ConversationHandler, MessageHandler, filters, CallbackQueryHandler
 
@@ -8,7 +9,7 @@ from config import settings
 import text_strings as ts
 from draw_image import LightImage
 import models.crud as crud
-from models.crud import get_user, create_user
+from utils import *
 
 if TYPE_CHECKING:
     from models import User, Organisation
@@ -170,45 +171,53 @@ async def set_info_org(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(message, reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
     return STEP_CHOICE
 
-async def yd_ids(url, login, password):
-    s = requests.Session()
-    r = s.post('https://adm.yadonor.ru/index.php?obj=BLOOD_STATIONS', data={'login': login, 'password': password})
-    # TODO: добавить проверку ту ли ссылку нам пихнули
-    params_url = url.split('?')[1]
-    station_id = ''
-    for param in params_url.split('&'):
-        if param.split('=')[0] == 'BLOOD_STATIONS_ID':
-            station_id = param.split('=')[1]
-    r = s.get(url)
-    soup = BeautifulSoup(r.text, 'html.parser')
-    soup = soup.find_all(attrs={'name': re.compile('reserv')})
-    groups = []
-    for block in soup:
-        if block.get('name')[7:10] not in groups:
-            groups.append(block.get('name')[7:10])
-    # print(groups)
-    ready_groups = [groups[0], groups[4], groups[1], groups[5], groups[2], groups[6], groups[3], groups[7]]
-    return ready_groups, station_id
 
 async def get_vk_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Если отдаёт всё, то сначала сохраняем параметры ЯД
-    if context.user_data['choice'] in [3, 1]:
-        DB.connect(reuse_if_open=True)
-        groups, station_id = yd_ids(url=update.message.text, login=decode_str(context.user_data['org'].yd_login),
-                                    password=decode_str(context.user_data['org'].yd_pass))
-        context.user_data['org'].yd_station_id = station_id
-        context.user_data['org'].yd_groups_ids = ','.join(groups)
-        context.user_data['org'].save()
-        if context.user_data['choice'] == 1:
-            await update.message.reply_text(tstr.SET_INFO_YD_OK)
-            DB.close()
-            return ConversationHandler.END
-        else:
-            await update.message.reply_text(f"{tstr.SET_INFO_YD_OK} Займёмся ВК")
-    message = tstr.SET_INFO_VK_TOKEN
+    # if context.user_data['choice'] in [3, 1]:
+    #     DB.connect(reuse_if_open=True)
+    #     groups, station_id = yd_ids(url=update.message.text, login=decode_str(context.user_data['org'].yd_login),
+    #                                 password=decode_str(context.user_data['org'].yd_pass))
+    #     context.user_data['org'].yd_station_id = station_id
+    #     context.user_data['org'].yd_groups_ids = ','.join(groups)
+    #     context.user_data['org'].save()
+    #     if context.user_data['choice'] == 1:
+    #         await update.message.reply_text(tstr.SET_INFO_YD_OK)
+    #         DB.close()
+    #         return ConversationHandler.END
+    #     else:
+    #         await update.message.reply_text(f"{tstr.SET_INFO_YD_OK} Займёмся ВК")
+    message = ts.SET_INFO_VK_TOKEN
     await update.message.reply_text(message, reply_markup=ReplyKeyboardRemove())
-    DB.close()
     return VK_TOKEN
+
+async def get_vk_group_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # TODO: Добавить проверку на правильность ссылки
+    params = update.message.text.split('#')[1].split('&')
+    for param in params:
+        if param.split('=')[0] == 'access_token':
+            context.user_data['org'].vk_token = encode_str(param.split('=')[1])
+            await crud.org_set_token(org=context.user_data['org'])
+    if context.user_data['org'].vk_token is None:
+        await update.message.reply_text(ts.SET_INFO_VK_ERROR)
+        return ConversationHandler.END
+    else:
+        await update.message.reply_text(ts.SET_INFO_VK_OK)
+        return VK_GROUP_URL
+
+async def save_vk_group_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # TODO: Добавить проверку на правильность ссылки и ошибку группы
+    group_name = update.message.text.split('/')[-1]
+    vk_session = vk_api.VkApi(token=decode_str(context.user_data['org'].vk_token), api_version='5.103',
+                              scope='wall,offline')
+    vk = vk_session.get_api()
+    response = vk.utils.resolveScreenName(screen_name=group_name)
+    context.user_data['org'].vk_group_id = response['object_id']
+    context.user_data['org'].save()
+    await update.message.reply_text('Ну, вроде всё ОК.')
+    context.user_data.clear()
+    DB.close()
+    return ConversationHandler.END
 
 async def set_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # update.message.reply_text(reply_markup = ReplyKeyboardRemove())
@@ -230,6 +239,27 @@ async def set_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         case _:
             await update.message.reply_text('Хорошо')
             return ConversationHandler.END
+
+
+async def get_yd_login(update, context):
+    message = ts.SET_INFO_YD_LOGIN
+    await update.message.reply_text(message, reply_markup=ReplyKeyboardRemove())
+    return YD_LOGIN
+
+
+async def get_yd_pass(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['org'].yd_login = encode_str(update.message.text)
+    message = ts.SET_INFO_YD_PASS
+    await update.message.reply_text(message)
+    return YD_PASS
+
+async def get_yd_url(update, context):
+    context.user_data['org'].yd_pass = encode_str(update.message.text)
+    # TODO: Додавить картинку с копированием УРЛа
+    message = ts.SET_INFO_YD_URL
+    await update.message.reply_text(message)
+    await context.bot.send_document(chat_id=update.effective_chat.id, document=open('bot_img/yd_site.jpg', 'rb'))
+    return YD_URL
 
 if __name__ == '__main__':
     application = ApplicationBuilder().token(settings.token).build()
