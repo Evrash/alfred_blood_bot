@@ -6,7 +6,7 @@ authors = [
     {name = "Anton Abramov",email = "abramov.it@yandex.ru"}
 ]
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.13, <4.0"
 dependencies = [
     "pillow (>=11.1.0,<12.0.0)",
     "python-telegram-bot (>=21.10,<22.0)",
@@ -15,7 +15,8 @@ dependencies = [
     "alembic (>=1.15.1,<2.0.0)",
     "sqlalchemy[asyncio] (>=2.0.39,<3.0.0)",
     "aiosqlite (>=0.21.0,<0.22.0)",
-    "beautifulsoup4 (>=4.13.3,<5.0.0)"
+    "beautifulsoup4 (>=4.13.3,<5.0.0)",
+    "vkbottle (>=4.4.5,<5.0.0)"
 ]
 
 

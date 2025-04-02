@@ -4,6 +4,9 @@ from bs4 import BeautifulSoup
 import asyncio
 import base64
 
+from vkbottle import API
+
+
 def encode_str(string):
     return str(base64.b64encode(string.encode('utf-8')), 'utf-8')
 
@@ -72,9 +75,14 @@ def make_message(yellow_string, red_string, org=None):
     return message_str
 
 
+async def get_vk_group_name():
+    api = API('')
+
+    r = await api.groups.get_by_id()
+    print(r)
+
+
 async def main():
-    await yd_ids('https://adm.yadonor.ru/index.php?obj=BLOOD_RESERVE&action=change&BLOOD_RESERVE_ID=665&BLOOD_STATIONS_ID=1127',
-                 'xxx',
-                 'xxx')
+    await get_vk_group_name()
 
 asyncio.run(main())
