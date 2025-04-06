@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 import asyncio
 import base64
 
-from vkbottle import API
+from vkbottle import API, VKAPIError
 
 
 def encode_str(string):
@@ -75,14 +75,24 @@ def make_message(yellow_string, red_string, org=None):
     return message_str
 
 
-async def get_vk_group_name():
-    api = API('')
+async def get_vk_group_id(token: str):
+    api = API(token)
+    try:
+        r = await api.groups.get_by_id()
+    except (VKAPIError[1116], VKAPIError[5]) as e:
+        print('Ошибка авторизации')
+        return {'error_msg': 'Не верный токен'}
+    except VKAPIError as e:
+        print(e.error_msg, e.code)
+        return {'error_msg': f'Неизвестная ошибка: error:{e.error_msg}, code:{e.code}'}
+    else:
+        return {'id': r.groups[0].id}
 
-    r = await api.groups.get_by_id()
-    print(r)
 
-
-async def main():
-    await get_vk_group_name()
-
-asyncio.run(main())
+# async def main():
+#     res = await get_vk_group_id()
+#     print(res)
+#     if 'error_msg' in res:
+#         print(True)
+#
+# asyncio.run(main())
