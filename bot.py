@@ -1,7 +1,6 @@
 import logging
 from typing import TYPE_CHECKING
 
-from pyexpat.errors import messages
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, ConversationHandler, MessageHandler, filters, CallbackQueryHandler
 
@@ -135,7 +134,7 @@ async def light_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return END
 
 async def cancel(update:Update, context:ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Выполнение задание прервано.", reply_markup=ReplyKeyboardRemove())
+    await update.message.reply_text("Выполнение задания прервано.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
 # Функции для сбора информации о пользователе
@@ -171,53 +170,6 @@ async def set_info_org(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(message, reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
     return STEP_CHOICE
 
-
-async def get_vk_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Если отдаёт всё, то сначала сохраняем параметры ЯД
-    # if context.user_data['choice'] in [3, 1]:
-    #     DB.connect(reuse_if_open=True)
-    #     groups, station_id = yd_ids(url=update.message.text, login=decode_str(context.user_data['org'].yd_login),
-    #                                 password=decode_str(context.user_data['org'].yd_pass))
-    #     context.user_data['org'].yd_station_id = station_id
-    #     context.user_data['org'].yd_groups_ids = ','.join(groups)
-    #     context.user_data['org'].save()
-    #     if context.user_data['choice'] == 1:
-    #         await update.message.reply_text(tstr.SET_INFO_YD_OK)
-    #         DB.close()
-    #         return ConversationHandler.END
-    #     else:
-    #         await update.message.reply_text(f"{tstr.SET_INFO_YD_OK} Займёмся ВК")
-    message = ts.SET_INFO_VK_TOKEN
-    await update.message.reply_text(message, reply_markup=ReplyKeyboardRemove())
-    return VK_TOKEN
-
-async def get_vk_group_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # TODO: Добавить проверку на правильность ссылки
-    params = update.message.text.split('#')[1].split('&')
-    for param in params:
-        if param.split('=')[0] == 'access_token':
-            context.user_data['org'].vk_token = encode_str(param.split('=')[1])
-            await crud.org_set_token(org=context.user_data['org'])
-    if context.user_data['org'].vk_token is None:
-        await update.message.reply_text(ts.SET_INFO_VK_ERROR)
-        return ConversationHandler.END
-    else:
-        await update.message.reply_text(ts.SET_INFO_VK_OK)
-        return VK_GROUP_URL
-
-async def save_vk_group_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # TODO: Добавить проверку на правильность ссылки и ошибку группы
-    group_name = update.message.text.split('/')[-1]
-    vk_session = vk_api.VkApi(token=decode_str(context.user_data['org'].vk_token), api_version='5.103',
-                              scope='wall,offline')
-    vk = vk_session.get_api()
-    response = vk.utils.resolveScreenName(screen_name=group_name)
-    context.user_data['org'].vk_group_id = response['object_id']
-    context.user_data['org'].save()
-    await update.message.reply_text('Ну, вроде всё ОК.')
-    context.user_data.clear()
-    DB.close()
-    return ConversationHandler.END
 
 async def set_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # update.message.reply_text(reply_markup = ReplyKeyboardRemove())
@@ -261,6 +213,43 @@ async def get_yd_url(update, context):
     await context.bot.send_document(chat_id=update.effective_chat.id, document=open('bot_img/yd_site.jpg', 'rb'))
     return YD_URL
 
+async def get_vk_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Если отдаёт всё, то сначала сохраняем параметры ЯД
+    if context.user_data['choice'] in ['ALL', 'YD']:
+        groups, station_id, is_user = yd_ids(url=update.message.text,
+                                             login=decode_str(context.user_data['org'].yd_login),
+                                             password=decode_str(context.user_data['org'].yd_pass))
+        if is_user:
+            context.user_data['org'].yd_station_id = station_id
+            context.user_data['org'].yd_groups_ids = ','.join(groups)
+            await crud.set_yd_all(context.user_data['org'])
+            if context.user_data['choice'] == 'YD':
+                await update.message.reply_text(ts.SET_INFO_YD_OK)
+                return ConversationHandler.END
+            else:
+                await update.message.reply_text(f"{ts.SET_INFO_YD_OK} Займёмся ВК")
+        else:
+            await update.message.reply_text(ts.SET_INFO_YD_ERROR)
+            return YD_LOGIN
+    message = ts.SET_INFO_VK_TOKEN
+    await update.message.reply_text(message, reply_markup=ReplyKeyboardRemove())
+    return VK_TOKEN
+
+async def set_vk_group_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    vk_token = update.message.text.strip()
+    result = await get_vk_group_id(vk_token)
+    if 'id' in result:
+        context.user_data['org'].vk_token = encode_str(update.message.text.strip())
+        context.user_data['org'].vk_group_id = result['id']
+        await crud.org_set_token(org=context.user_data['org'])
+        await crud.org_set_vk_group_id(org=context.user_data['org'])
+        await update.message.reply_text(ts.SET_INFO_VK_OK)
+        return ConversationHandler.END
+    else:
+        await update.message.reply_text(ts.SET_INFO_VK_TOKEN_ERROR)
+        await update.message.reply_text(result['error_msg'])
+        return VK_TOKEN
+
 if __name__ == '__main__':
     application = ApplicationBuilder().token(settings.token).build()
     start_handler = CommandHandler('start', start)
@@ -279,6 +268,19 @@ if __name__ == '__main__':
             MAKE_IMAGE: [CallbackQueryHandler(more_yellow_inline, pattern= str(STEP_YELLOW)),
                          CallbackQueryHandler(red_inline, pattern= str(STEP_RED)),
                          CallbackQueryHandler(light_done, pattern= str(STEP_DONE))],
+        },
+        fallbacks=[CommandHandler('cancel', cancel)]
+    )
+
+    info_handler = ConversationHandler(
+        entry_points=[CommandHandler('info', set_info_start)],
+        states={
+            ORG_NAME: [MessageHandler(filters.TEXT, set_info_org)],
+            STEP_CHOICE: [MessageHandler(filters.TEXT, set_choice)],
+            YD_LOGIN: [MessageHandler(filters.TEXT, get_yd_pass)],
+            YD_PASS: [MessageHandler(filters.TEXT, get_yd_url)],
+            YD_URL: [MessageHandler(filters.TEXT, get_vk_token)],
+            VK_TOKEN: [MessageHandler(filters.TEXT, set_vk_group_id)],
         },
         fallbacks=[CommandHandler('cancel', cancel)]
     )
