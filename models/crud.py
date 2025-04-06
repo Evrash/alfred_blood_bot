@@ -68,6 +68,30 @@ async def org_set_token(org: Organisation):
         await conn.execute(stmt)
         await conn.commit()
 
+async def org_set_vk_group_id(org: Organisation):
+    async with (db_helper.session_factory() as conn):
+        stmt = (
+            update(Organisation)
+            .values(vk_group_id = org.vk_group_id)
+            .filter_by(id=org.id)
+        )
+        print(stmt)
+        await conn.execute(stmt)
+        await conn.commit()
+
+
+async def set_yd_all(org: Organisation):
+    async with (db_helper.session_factory() as conn):
+        stmt = (
+            update(Organisation)
+            .values(yd_login = org.vk_group_id, yd_pass  = org.yd_pass, yd_station_id = org.yd_station_id,
+                    yd_groups_ids = org.yd_groups_ids)
+            .filter_by(id=org.id)
+        )
+        print(stmt)
+        await conn.execute(stmt)
+        await conn.commit()
+
 # async def update_user(user: User):
 
 # async def get_user_org(tg_id: int) -> Organisation:
