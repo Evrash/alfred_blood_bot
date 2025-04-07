@@ -50,6 +50,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await crud.get_or_create(tg_id=update.effective_chat.id)
     await context.bot.send_message(chat_id=update.effective_chat.id, text=ts.MESSAGE_START)
 
+#Функции генерации светофора
 async def start_image_inline(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Старт генерации донорского светофора"""
     context.user_data['yellow_list'] = []
@@ -170,7 +171,6 @@ async def set_info_org(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(message, reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
     return STEP_CHOICE
 
-
 async def set_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # update.message.reply_text(reply_markup = ReplyKeyboardRemove())
     match update.message.text:
@@ -192,12 +192,10 @@ async def set_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text('Хорошо')
             return ConversationHandler.END
 
-
 async def get_yd_login(update, context):
     message = ts.SET_INFO_YD_LOGIN
     await update.message.reply_text(message, reply_markup=ReplyKeyboardRemove())
     return YD_LOGIN
-
 
 async def get_yd_pass(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['org'].yd_login = encode_str(update.message.text)
@@ -216,9 +214,9 @@ async def get_yd_url(update, context):
 async def get_vk_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Если отдаёт всё, то сначала сохраняем параметры ЯД
     if context.user_data['choice'] in ['ALL', 'YD']:
-        groups, station_id, is_user = yd_ids(url=update.message.text,
-                                             login=decode_str(context.user_data['org'].yd_login),
-                                             password=decode_str(context.user_data['org'].yd_pass))
+        groups, station_id, is_user = await yd_ids(url=update.message.text,
+                                                   login=decode_str(context.user_data['org'].yd_login),
+                                                   password=decode_str(context.user_data['org'].yd_pass))
         if is_user:
             context.user_data['org'].yd_station_id = station_id
             context.user_data['org'].yd_groups_ids = ','.join(groups)
@@ -284,7 +282,9 @@ if __name__ == '__main__':
         },
         fallbacks=[CommandHandler('cancel', cancel)]
     )
+
     application.add_handler(start_handler)
     application.add_handler(image_handler)
+    application.add_handler(info_handler)
 
     application.run_polling()

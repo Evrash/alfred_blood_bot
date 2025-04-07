@@ -1,7 +1,7 @@
 import httpx
 import re
 from bs4 import BeautifulSoup
-import asyncio
+# import asyncio
 import base64
 
 from vkbottle import API, VKAPIError
@@ -31,7 +31,7 @@ async def yd_ids(url: str, login: str, password: str):
                 station_id = param.split('=')[1]
             if param.split('=')[0] == 'BLOOD_RESERVE_ID':
                 n_first = int(param.split('=')[1])
-                groups = [x for x in range(n_first, n_first + 8)]
+                groups = [str(x) for x in range(n_first, n_first + 8)]
         # response = await client.get(url)
         # print(response.text)
         # soup = BeautifulSoup(response.text, 'html.parser')

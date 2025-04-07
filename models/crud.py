@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import User, db_helper, Organisation
 from sqlalchemy.orm import selectinload
-import asyncio
+# import asyncio
 
 
 async def create_user(tg_id: int) -> User:
@@ -98,19 +98,19 @@ async def set_yd_all(org: Organisation):
 #     async with db_helper.session_factory() as conn:
 #         stmt = select(Organisation).options(selectinload(User.tg_id))
 
-async def main():
-    user: User = await get_user(tg_id=154276194)
-    org: Organisation = await get_organisation_by_name(name='Test')
-    user.organisation_id = org.id
-    print(user.organisation_id)
-
-asyncio.run(main())
-
-async def main():
-    user = await get_user(154276194)
-    user.is_admin = True
-    org = await get_organisation_by_name('Test')
-    user.organisation = org
-    await user_set_org(user=user)
-
-asyncio.run(main())
+# async def main():
+#     user: User = await get_user(tg_id=154276194)
+#     org: Organisation = await get_organisation_by_name(name='Test')
+#     user.organisation_id = org.id
+#     print(user.organisation_id)
+#
+# asyncio.run(main())
+#
+# async def main():
+#     user = await get_user(154276194)
+#     user.is_admin = True
+#     org = await get_organisation_by_name('Test')
+#     user.organisation = org
+#     await user_set_org(user=user)
+#
+# asyncio.run(main())
