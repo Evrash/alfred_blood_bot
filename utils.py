@@ -52,14 +52,18 @@ def sorted_string(line: str) -> str:
     return ', '.join(group_list)
 
 
-def make_message(yellow_string, red_string, org=None):
+def make_message(light: dict[str:str], start_text: str=None, end_text: str = None, author:str = None):
+    def string_converter(color:str):
+
+
     message_str = ''
-    if not yellow_string and not red_string:
-        message_str = 'Уважаемые доноры, сегодня: \n' \
-                      'Всех групп достаточно!'
+    if not any(x in light.values() for x in ['yellow', 'red']):
+        message_str = 'Уважаемые доноры, сегодня: \nВсех групп достаточно!'
+
     else:
-        if org and org.start_text:
-            message_str = org.start_text + '\n'
+
+        if start_text:
+            message_str = start_text + '\n'
         else:
             message_str = 'Уважаемые доноры, на сегодняшний день наш «Донорский светофор» выглядит следующим образом:\n'
         if yellow_string:
@@ -101,6 +105,8 @@ async def publish_to_yd(login, password, station_id, group_ids, group_vals):
         # TODO: Исправть reservid
         await client.post('https://adm.yadonor.ru/index.php?obj=BLOOD_RESERVE&action=change&BLOOD_RESERVE_ID=665&BLOOD_STATIONS_ID='
                           + station_id, data=yd_data)
+
+
 
 # async def main():
 #     res = await get_vk_group_id()

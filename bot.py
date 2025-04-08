@@ -8,7 +8,6 @@ from config import settings
 import text_strings as ts
 from draw_image import LightImage
 import models.crud as crud
-from models.crud import get_org_by_tg_id, get_user
 from utils import *
 
 if TYPE_CHECKING:
@@ -123,8 +122,34 @@ async def light_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data['red_list']:
         for group in context.user_data['red_list']:
             light_template[group] = 'red'
-    image = LightImage('color_drops', light_template, 'org1')
+
+    # Формируем строку с состоянием светофора для YD
+    colors = ['2'] * 8
+    for count, value in light_template.values():
+        match value:
+            case 'yellow':
+                colors[count] = '1'
+            case 'red':
+                colors[count] = '2'
+    yd_group_str = ','.join(colors)
+
+    # Получаем данные для светофора
+    org = await crud.get_org_by_tg_id(tg_id=update.effective_user.id)
+    img_template = settings.default_img_template
+    if org:
+        org_str = 'org' + str(org.id)
+        org.last_yd_str = yd_group_str
+        await crud.set_organisation_yd_str(org)
+        if org.vk_template:
+            img_template = org.vk_template
+    else:
+        user = await crud.get_user(tg_id=update.effective_user.id)
+        org_str = 'usr' + str(user.id)
+
+    image = LightImage(img_template, light_template, org_str)
     image.draw_image()
+
+
     msg = ''
     if context.user_data['yellow_list']:
         msg = f'🟡 {get_text_from_groups(context.user_data['yellow_list'])}\n'
@@ -133,6 +158,9 @@ async def light_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.edit_message_text(text=msg)
     await context.bot.send_document(chat_id=update.effective_message.chat_id,
                                     document=open(image.image_name, 'rb'))
+
+
+
     return END
 
 async def cancel(update:Update, context:ContextTypes.DEFAULT_TYPE):
@@ -251,11 +279,11 @@ async def set_vk_group_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 #Функции публикации светофора
 async def publish_everywhere(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    org = await get_org_by_tg_id(tg_id=update.effective_user.id)
+    org = await crud.get_org_by_tg_id(tg_id=update.effective_user.id)
     if org:
         if not (org.vk_token and org.vk_group_id and org.yd_login and org.yd_pass):
             await update.message.reply_text(ts.NO_LOGIN_DATA)
-        user = await get_user(tg_id=update.effective_user.id)
+        user = await crud.get_user(tg_id=update.effective_user.id)
         if org.yd_login and org.yd_pass and org.yd_station_id and org.yd_groups_ids and user.is_admin:
             await update.message.reply_text(ts.YD_PUB_POS)
             await publish_to_yd(login=decode_str(org.yd_login), password=decode_str(org.yd_pass),
