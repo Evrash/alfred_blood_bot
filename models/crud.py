@@ -100,6 +100,17 @@ async def set_yd_all(org: Organisation):
         await conn.execute(stmt)
         await conn.commit()
 
+async def set_organisation_yd_str(org: Organisation):
+    async with (db_helper.session_factory() as conn):
+        stmt = (
+            update(Organisation)
+            .values(last_yd_str = org.last_yd_str)
+            .filter_by(id=org.id)
+        )
+        print(stmt)
+        await conn.execute(stmt)
+        await conn.commit()
+
 # async def update_user(user: User):
 
 # async def get_user_org(tg_id: int) -> Organisation:
