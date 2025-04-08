@@ -89,6 +89,19 @@ async def get_vk_group_id(token: str):
         return {'id': r.groups[0].id}
 
 
+async def publish_to_yd(login, password, station_id, group_ids, group_vals):
+    groups = ['reserv[' + x + ']' for x in group_ids.split(',')]
+    vals = group_vals.split(',')
+    yd_data = dict(zip(groups, vals))
+    yd_data['spk_id'] = station_id
+    async with httpx.AsyncClient() as client:
+        #TODO: добавить try
+        await client.post('https://adm.yadonor.ru/index.php?obj=BLOOD_STATIONS',
+                          data={'login': login, 'password': password})
+        # TODO: Исправть reservid
+        await client.post('https://adm.yadonor.ru/index.php?obj=BLOOD_RESERVE&action=change&BLOOD_RESERVE_ID=665&BLOOD_STATIONS_ID='
+                          + station_id, data=yd_data)
+
 # async def main():
 #     res = await get_vk_group_id()
 #     print(res)

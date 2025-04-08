@@ -8,6 +8,7 @@ from config import settings
 import text_strings as ts
 from draw_image import LightImage
 import models.crud as crud
+from models.crud import get_org_by_tg_id, get_user
 from utils import *
 
 if TYPE_CHECKING:
@@ -247,6 +248,33 @@ async def set_vk_group_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(ts.SET_INFO_VK_TOKEN_ERROR)
         await update.message.reply_text(result['error_msg'])
         return VK_TOKEN
+
+#Функции публикации светофора
+async def publish_everywhere(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    org = await get_org_by_tg_id(tg_id=update.effective_user.id)
+    if org:
+        if not (org.vk_token and org.vk_group_id and org.yd_login and org.yd_pass):
+            await update.message.reply_text(ts.NO_LOGIN_DATA)
+        user = await get_user(tg_id=update.effective_user.id)
+        if org.yd_login and org.yd_pass and org.yd_station_id and org.yd_groups_ids and user.is_admin:
+            await update.message.reply_text(ts.YD_PUB_POS)
+            await publish_to_yd(login=decode_str(org.yd_login), password=decode_str(org.yd_pass),
+                                station_id=org.yd_station_id, group_ids=org.yd_groups_ids, group_vals=org.last_state)
+            # org.last_create_date = datetime.now()
+            # org.save(only=[Organization.last_create_date])
+            send_to_admins(context=context, org=org, text='Опубликовано на ЯДоноре')
+        if org.vk_token and org.vk_group_id and user.is_admin:
+            update.message.reply_text('Можем опубликовать в ВК')
+            post_id = publish_to_vk(token=decode_str(org.vk_token), org_dir='org' + str(org.id),
+                                    vk_template=org.vk_template, group_id=org.vk_group_id, is_pin=org.vk_is_pin_image,
+                                    prev_post_id=org.vk_last_image_post, text=org.ready_text)
+            org.vk_last_image_post = post_id
+            org.save(only=[Organization.vk_last_image_post])
+            send_to_admins(context=context, org=org, text='Опубликовано в ВК')
+        DB.close()
+    else:
+        update.message.reply_text('Неа, сначала надо добавить организацию.')
+        DB.close()
 
 if __name__ == '__main__':
     application = ApplicationBuilder().token(settings.token).build()

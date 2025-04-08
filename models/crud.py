@@ -31,6 +31,14 @@ async def get_or_create(tg_id: int) -> User:
         return await create_user(tg_id)
     return result
 
+async def get_org_by_tg_id(tg_id: int) -> Organisation | None:
+    async with db_helper.session_factory() as conn:
+        stmt = select(Organisation).join(User, User.organisation_id == Organisation.id).where(User.tg_id == tg_id)
+        result = await conn.execute(stmt)
+        if result:
+            return result.scalar()
+        return None
+
 async def get_organisation_by_name(name: str) -> Organisation | None:
     async with db_helper.session_factory() as conn:
         stmt = select(Organisation).where(Organisation.name==name)
@@ -107,10 +115,9 @@ async def set_yd_all(org: Organisation):
 # asyncio.run(main())
 #
 # async def main():
-#     user = await get_user(154276194)
-#     user.is_admin = True
-#     org = await get_organisation_by_name('Test')
-#     user.organisation = org
-#     await user_set_org(user=user)
-#
+#     org = await get_org_by_tg_id(154276194)
+#     # for user in org.users:
+#     #     print(user)
+#     print(org.id, org.name)
+# #
 # asyncio.run(main())
