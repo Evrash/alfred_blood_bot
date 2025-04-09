@@ -150,11 +150,11 @@ async def light_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
     image.draw_image()
 
 
-    msg = ''
-    if context.user_data['yellow_list']:
-        msg = f'🟡 {get_text_from_groups(context.user_data['yellow_list'])}\n'
-    if context.user_data['red_list']:
-        msg += f'🔴 {get_text_from_groups(context.user_data['red_list'])}\n'
+    msg = make_message(light=light_template)
+    # if context.user_data['yellow_list']:
+    #     msg = f'🟡 {get_text_from_groups(context.user_data['yellow_list'])}\n'
+    # if context.user_data['red_list']:
+    #     msg += f'🔴 {get_text_from_groups(context.user_data['red_list'])}\n'
     await update.callback_query.edit_message_text(text=msg)
     await context.bot.send_document(chat_id=update.effective_message.chat_id,
                                     document=open(image.image_name, 'rb'))

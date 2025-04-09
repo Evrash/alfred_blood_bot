@@ -6,6 +6,8 @@ import base64
 
 from vkbottle import API, VKAPIError
 
+from config import settings
+
 
 def encode_str(string):
     return str(base64.b64encode(string.encode('utf-8')), 'utf-8')
@@ -52,8 +54,11 @@ def sorted_string(line: str) -> str:
     return ', '.join(group_list)
 
 
-def make_message(light: dict[str:str], start_text: str=None, end_text: str = None, author:str = None):
-    def string_converter(color:str):
+def make_message(light: dict[str:str], start_text: str=None, end_text: str = None, hashtag:str = None):
+    def get_text_from_groups(groups: list):
+        if groups:
+            return ', '.join(settings.group.__getattribute__(x) for x in groups)
+        return ''
 
 
     message_str = ''
@@ -66,16 +71,25 @@ def make_message(light: dict[str:str], start_text: str=None, end_text: str = Non
             message_str = start_text + '\n'
         else:
             message_str = 'Уважаемые доноры, на сегодняшний день наш «Донорский светофор» выглядит следующим образом:\n'
-        if yellow_string:
-            message_str += 'Недостаточно крови: ' + sorted_string(yellow_string) + ' группы\n'
-        if red_string:
-            message_str += 'Острая нехватка крови: ' + sorted_string(red_string) + ' группы\n'
-        if org and org.end_text:
-            message_str += org.end_text
+        yellow_str = ''
+        red_str = ''
+        for group, value in light.items():
+            if value == 'yellow':
+                yellow_str += f'{settings.group.__getattribute__(group)}, '
+            if value == 'red':
+                red_str += f'{settings.group.__getattribute__(group)}, '
+        if yellow_str:
+            message_str += f'Недостаточно крови: {yellow_str.rstrip(', ')} группы\n'
+        if red_str:
+            message_str += f'Острая нехватка крови: {red_str.rstrip(', ')} группы\n'
+        if end_text:
+            message_str += end_text
         else:
             message_str += ('Ждем доноров на кроводачу (не плазму⛔) без предварительной записи '
                             '(возможность сдачи Вами крови '
-                            'рекомендуем уточнить по телефону 286-013)')
+                            'рекомендуем уточнить по телефону 286-013)\n')
+    if hashtag:
+        message_str += f'{hashtag}\n'
     return message_str
 
 
@@ -115,3 +129,10 @@ async def publish_to_yd(login, password, station_id, group_ids, group_vals):
 #         print(True)
 #
 # asyncio.run(main())
+
+# light_template = {'o_plus': 'red', 'o_minus':'green',
+#                   'a_plus': 'yellow', 'a_minus':'red',
+#                   'b_plus': 'green', 'b_minus':'yellow',
+#                   'ab_plus': 'green', 'ab_minus':'red'}
+#
+# print(make_message(light=light_template))
