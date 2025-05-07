@@ -88,8 +88,8 @@ async def red_inline(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if '__' in query.data:
         blood_group: str = query.data.split('__')[-1]
         if not context.user_data['red_list']:
-            context.user_data['red_list'] = [blood_group]
-        elif blood_group not in context.user_data['red_list']:
+            context.user_data['red_list'] = []
+        if blood_group not in context.user_data['red_list']:
             context.user_data['red_list'].append(blood_group)
             if blood_group in context.user_data['yellow_list']:
                 context.user_data['yellow_list'].remove(blood_group)
@@ -125,7 +125,7 @@ async def light_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Формируем строку с состоянием светофора для YD
     colors = ['2'] * 8
-    for count, value in light_template.values():
+    for count, value in enumerate(light_template.items()):
         match value:
             case 'yellow':
                 colors[count] = '1'
@@ -155,6 +155,9 @@ async def light_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
     #     msg = f'🟡 {get_text_from_groups(context.user_data['yellow_list'])}\n'
     # if context.user_data['red_list']:
     #     msg += f'🔴 {get_text_from_groups(context.user_data['red_list'])}\n'
+    if org:
+        org.vk_last_light_post = msg
+        await crud.set_vk_last_light_post(msg)
     await update.callback_query.edit_message_text(text=msg)
     await context.bot.send_document(chat_id=update.effective_message.chat_id,
                                     document=open(image.image_name, 'rb'))
@@ -279,30 +282,40 @@ async def set_vk_group_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 #Функции публикации светофора
 async def publish_everywhere(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def send_to_admins(org_id :int, text :str):
+        admin_users = await crud.get_org_admins(org_id)
+        for admin_user in admin_users:
+            await context.bot.send_message(chat_id=admin_user.tg_id, text=text)
+
     org = await crud.get_org_by_tg_id(tg_id=update.effective_user.id)
     if org:
         if not (org.vk_token and org.vk_group_id and org.yd_login and org.yd_pass):
             await update.message.reply_text(ts.NO_LOGIN_DATA)
         user = await crud.get_user(tg_id=update.effective_user.id)
         if org.yd_login and org.yd_pass and org.yd_station_id and org.yd_groups_ids and user.is_admin:
-            await update.message.reply_text(ts.YD_PUB_POS)
-            await publish_to_yd(login=decode_str(org.yd_login), password=decode_str(org.yd_pass),
-                                station_id=org.yd_station_id, group_ids=org.yd_groups_ids, group_vals=org.last_state)
-            # org.last_create_date = datetime.now()
-            # org.save(only=[Organization.last_create_date])
-            send_to_admins(context=context, org=org, text='Опубликовано на ЯДоноре')
+            if org.yd_last_pub_date > org.last_create_date:
+                await update.message.reply_text(ts.ALREADY_PUB)
+            else:
+                await update.message.reply_text(ts.YD_PUB_POS)
+                await publish_to_yd(login=decode_str(org.yd_login), password=decode_str(org.yd_pass),
+                                    station_id=org.yd_station_id, group_ids=org.yd_groups_ids,
+                                    group_vals=org.last_group_state)
+                await crud.set_yd_last_pub_date(org=org)
+                await send_to_admins(org_id=org.id, text=ts.YD_PUB_SUCCESS)
         if org.vk_token and org.vk_group_id and user.is_admin:
-            update.message.reply_text('Можем опубликовать в ВК')
-            post_id = publish_to_vk(token=decode_str(org.vk_token), org_dir='org' + str(org.id),
-                                    vk_template=org.vk_template, group_id=org.vk_group_id, is_pin=org.vk_is_pin_image,
-                                    prev_post_id=org.vk_last_image_post, text=org.ready_text)
-            org.vk_last_image_post = post_id
-            org.save(only=[Organization.vk_last_image_post])
-            send_to_admins(context=context, org=org, text='Опубликовано в ВК')
-        DB.close()
+            await update.message.reply_text(ts.VK_PUB_POS)
+            post_id = await publish_to_vk(vk_token=decode_str(org.vk_token), org_dir=f'org{str(org.id)}',
+                                          group_id=org.vk_group_id, is_pin=org.vk_is_pin_image,
+                                          prev_post_id=org.vk_last_post_id, text=org.vk_last_light_post,
+                                          image_name=org.last_image_name)
+            if 'post_id' in post_id:
+                org.vk_last_post_id = post_id
+                await crud.set_vk_last_post_id(org=org)
+                await send_to_admins(org_id=org.id, text=ts.VK_PUB_SUCCESS)
+            else:
+                await send_to_admins(org_id=org.id, text=ts.VK_PUB_FAIL)
     else:
-        update.message.reply_text('Неа, сначала надо добавить организацию.')
-        DB.close()
+        await update.message.reply_text(ts.NO_ORG_DATA)
 
 if __name__ == '__main__':
     application = ApplicationBuilder().token(settings.token).build()
@@ -339,8 +352,11 @@ if __name__ == '__main__':
         fallbacks=[CommandHandler('cancel', cancel)]
     )
 
+    publish_handler = CommandHandler('pub', publish_everywhere)
+
     application.add_handler(start_handler)
     application.add_handler(image_handler)
     application.add_handler(info_handler)
+    application.add_handler(publish_handler)
 
     application.run_polling()
