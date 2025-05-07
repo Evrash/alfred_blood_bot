@@ -32,7 +32,7 @@ class LightImage(object):
         Изображения делятся на зависящие и не зависящие от группы крови.
         :return:
         """
-        if not settings.base_dir / f'img/{self.org}':
+        if not os.path.exists(settings.base_dir / f'img/{self.org}'):
             os.makedirs(settings.base_dir / f'img/{self.org}')
         template_path: Path =settings.base_dir / 'img_templates' / self.image_template.dir
         image: Image = Image.new('RGBA', self.image_template.size)
