@@ -1462,14 +1462,14 @@ typing_extensions = "*"
 
 [[package]]
 name = "vkbottle"
-version = "4.4.5"
-description = "Homogenic! Customizable asynchronous VK API framework implementing comfort and speed"
+version = "4.5.1"
+description = "Homogenic! Customizable asynchronous VK API framework implementing comfort and speed."
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["main"]
 files = [
-    {file = "vkbottle-4.4.5-py3-none-any.whl", hash = "sha256:d9d18c071130526de359f9ec4856f270d5fd4009d0305b2075c8346b70823169"},
-    {file = "vkbottle-4.4.5.tar.gz", hash = "sha256:5b0b3b3af3d2e35cd86543a0d6a8f9fc9864ba555e9adef675caae208d4a8e38"},
+    {file = "vkbottle-4.5.1-py3-none-any.whl", hash = "sha256:52afe9f9fa05c8edec91451d24c5e0e4e1b9a6bbbd4674448cddb2f272f72e13"},
+    {file = "vkbottle-4.5.1.tar.gz", hash = "sha256:ab26a4061a32d5955f0bce2ca2f49f933fa9675606c89fcd598f425953ae261f"},
 ]
 
 [package.dependencies]
@@ -1477,28 +1477,28 @@ aiofiles = "24.1.0"
 aiohttp = ">=3.11.12,<4.0.0"
 choicelib = ">=0.1.5,<0.2.0"
 colorama = ">=0.4.6,<0.5.0"
-pydantic = "<3"
+pydantic = ">1,<3"
 typing-extensions = ">=4.4.0,<5.0.0"
 vbml = ">=1.1.post1,<2.0"
-vkbottle-types = ">=5.199.63.4,<6.0.0.0"
+vkbottle-types = ">=5.199.93.4,<5.200.0.0"
 
 [[package]]
 name = "vkbottle-types"
-version = "5.199.63.4"
+version = "5.199.93.4.post1"
 description = "VK API methods & types for vkbottle."
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["main"]
 files = [
-    {file = "vkbottle_types-5.199.63.4-py3-none-any.whl", hash = "sha256:741bd23edb948b7e946f62344c623f513042ba58ddaa9b6dae19496688be48bb"},
-    {file = "vkbottle_types-5.199.63.4.tar.gz", hash = "sha256:a3ffcf0e0cc69f8f9f64afc68f6dae7688d247a78ac15eb7613fcffdf420d194"},
+    {file = "vkbottle_types-5.199.93.4.post1-py3-none-any.whl", hash = "sha256:194430367ff3592df70c6bf2f0b0207912a013b3528131483d483d1b93cbbf26"},
+    {file = "vkbottle_types-5.199.93.4.post1.tar.gz", hash = "sha256:56f3cecf69934fc66bc326c69ee77dc4f1709cabb2577a2e8cb2ab5695370ab4"},
 ]
 
 [package.dependencies]
 msgspec = ">=0.19.0,<0.20.0"
-pydantic = "<3"
+pydantic = ">1,<3"
 typing-extensions = ">=4.4.0,<5.0.0"
-vkbottle = ">=4.4.4,<5.0.0"
+vkbottle = ">=4.5.0,<5.0.0"
 
 [[package]]
 name = "yarl"
