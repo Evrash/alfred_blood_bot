@@ -1,3 +1,5 @@
+import datetime
+
 from more_itertools.more import with_iter
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,6 +36,14 @@ async def get_or_create(tg_id: int) -> User:
 async def get_org_by_tg_id(tg_id: int) -> Organisation | None:
     async with db_helper.session_factory() as conn:
         stmt = select(Organisation).join(User, User.organisation_id == Organisation.id).where(User.tg_id == tg_id)
+        result = await conn.execute(stmt)
+        if result:
+            return result.scalar()
+        return None
+
+async def get_org_admins(org_id: int) -> list[User] | None:
+    async with db_helper.session_factory() as conn:
+        stmt = select(User).where(User.is_admin == True, User.organisation_id == org_id)
         result = await conn.execute(stmt)
         if result:
             return result.scalar()
@@ -92,7 +102,7 @@ async def set_yd_all(org: Organisation):
     async with (db_helper.session_factory() as conn):
         stmt = (
             update(Organisation)
-            .values(yd_login = org.vk_group_id, yd_pass  = org.yd_pass, yd_station_id = org.yd_station_id,
+            .values(yd_login = org.yd_login, yd_pass  = org.yd_pass, yd_station_id = org.yd_station_id,
                     yd_groups_ids = org.yd_groups_ids)
             .filter_by(id=org.id)
         )
@@ -105,6 +115,39 @@ async def set_organisation_yd_str(org: Organisation):
         stmt = (
             update(Organisation)
             .values(last_yd_str = org.last_yd_str)
+            .filter_by(id=org.id)
+        )
+        print(stmt)
+        await conn.execute(stmt)
+        await conn.commit()
+
+async def set_yd_last_pub_date(org: Organisation):
+    async with (db_helper.session_factory() as conn):
+        stmt = (
+            update(Organisation)
+            .values(yd_last_pub_date = datetime.datetime.now())
+            .filter_by(id=org.id)
+        )
+        print(stmt)
+        await conn.execute(stmt)
+        await conn.commit()
+
+async def set_vk_last_light_post(org: Organisation):
+    async with (db_helper.session_factory() as conn):
+        stmt = (
+            update(Organisation)
+            .values(vk_last_light_post = org.vk_last_light_post)
+            .filter_by(id=org.id)
+        )
+        print(stmt)
+        await conn.execute(stmt)
+        await conn.commit()
+
+async def set_vk_last_post_id(org: Organisation):
+    async with (db_helper.session_factory() as conn):
+        stmt = (
+            update(Organisation)
+            .values(vk_last_post_id = org.vk_last_post_id)
             .filter_by(id=org.id)
         )
         print(stmt)
