@@ -4,8 +4,9 @@ from bs4 import BeautifulSoup
 # import asyncio
 import base64
 
-from vkbottle import API, VKAPIError
+from vkbottle import API, VKAPIError, PhotoWallUploader
 
+import config
 from config import settings
 
 
@@ -79,9 +80,9 @@ def make_message(light: dict[str:str], start_text: str=None, end_text: str = Non
             if value == 'red':
                 red_str += f'{settings.group.__getattribute__(group)}, '
         if yellow_str:
-            message_str += f'Недостаточно крови: {yellow_str.rstrip(', ')} группы\n'
+            message_str += f'Недостаточно крови:\n🟡 {yellow_str.rstrip(', ')}\n'
         if red_str:
-            message_str += f'Острая нехватка крови: {red_str.rstrip(', ')} группы\n'
+            message_str += f'Острая нехватка крови:\n🔴 {red_str.rstrip(', ')}\n'
         if end_text:
             message_str += end_text
         else:
@@ -104,7 +105,7 @@ async def get_vk_group_id(token: str):
         print(e.error_msg, e.code)
         return {'error_msg': f'Неизвестная ошибка: error:{e.error_msg}, code:{e.code}'}
     else:
-        return {'id': r.groups[0].id}
+        return {'id': int(r.groups[0].id)}
 
 
 async def publish_to_yd(login, password, station_id, group_ids, group_vals):
@@ -117,8 +118,30 @@ async def publish_to_yd(login, password, station_id, group_ids, group_vals):
         await client.post('https://adm.yadonor.ru/index.php?obj=BLOOD_STATIONS',
                           data={'login': login, 'password': password})
         # TODO: Исправть reservid
-        await client.post('https://adm.yadonor.ru/index.php?obj=BLOOD_RESERVE&action=change&BLOOD_RESERVE_ID=665&BLOOD_STATIONS_ID='
-                          + station_id, data=yd_data)
+        await client.post(f'https://adm.yadonor.ru/index.php?obj=BLOOD_RESERVE&action=change&BLOOD_RESERVE_ID={groups[0]}&BLOOD_STATIONS_ID={station_id}'
+                          , data=yd_data)
+
+async def publish_to_vk(vk_token: str, org_dir: str, image_name: str, group_id: int, text: str, is_pin: bool =True,
+                        prev_post_id: int=None):
+    api = API(vk_token)
+    try:
+        if prev_post_id:
+            await api.wall.delete(owner_id=-group_id, post_id=prev_post_id)
+        photo_uploader = PhotoWallUploader(api)
+        img_path = config.BASE_DIR / 'img' / org_dir / image_name
+        photo = await photo_uploader.upload(file_source=str(img_path), group_id=group_id)
+        post_response = await api.wall.post(owner_id=-group_id, from_group=True, message=text, attachments=[photo])
+        print(post_response)
+        if is_pin:
+            await api.wall.pin(owner_id=-group_id, post_id=post_response.post_id)
+    except (VKAPIError[1116], VKAPIError[5]) as e:
+        print('Ошибка авторизации')
+        return {'error_msg': 'Не верный токен'}
+    except VKAPIError as e:
+        print(e.error_msg, e.code)
+        return {'error_msg': f'Неизвестная ошибка: error:{e.error_msg}, code:{e.code}'}
+    else:
+        return {'post_id': post_response.post_id}
 
 
 
