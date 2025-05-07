@@ -94,10 +94,11 @@ def make_message(light: dict[str:str], start_text: str=None, end_text: str = Non
     return message_str
 
 
-async def get_vk_group_id(token: str):
+async def get_vk_group_id(token:str, group_link: str):
+    group_name = group_link.split('/')[-1]
     api = API(token)
     try:
-        r = await api.groups.get_by_id()
+        r = await api.utils.resolve_screen_name(screen_name=group_name)
     except (VKAPIError[1116], VKAPIError[5]) as e:
         print('Ошибка авторизации')
         return {'error_msg': 'Не верный токен'}
@@ -105,7 +106,7 @@ async def get_vk_group_id(token: str):
         print(e.error_msg, e.code)
         return {'error_msg': f'Неизвестная ошибка: error:{e.error_msg}, code:{e.code}'}
     else:
-        return {'id': int(r.groups[0].id)}
+        return {'group_id': int(r.object_id)}
 
 
 async def publish_to_yd(login, password, station_id, group_ids, group_vals):

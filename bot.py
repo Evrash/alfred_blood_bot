@@ -157,7 +157,7 @@ async def light_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
     #     msg += f'🔴 {get_text_from_groups(context.user_data['red_list'])}\n'
     if org:
         org.vk_last_light_post = msg
-        await crud.set_vk_last_light_post(msg)
+        await crud.set_vk_last_light_post(org)
     await update.callback_query.edit_message_text(text=msg)
     await context.bot.send_document(chat_id=update.effective_message.chat_id,
                                     document=open(image.image_name, 'rb'))
@@ -199,7 +199,7 @@ async def set_info_org(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = ts.SET_INFO_EXPL
     await update.message.reply_text(message)
     message = ts.SET_INFO_EXPL_QUEST
-    reply_keyboard = [[ts.BTN_GRANT_ALL], [ts.BTN_GRANT_VK], [ts.BTN_GRANT_VK], [ts.BTN_GRANT_NONE]]
+    reply_keyboard = [[ts.BTN_GRANT_ALL], [ts.BTN_GRANT_VK], [ts.BTN_GRANT_YD], [ts.BTN_GRANT_NONE]]
     await update.message.reply_text(message, reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
     return STEP_CHOICE
 
@@ -265,18 +265,32 @@ async def get_vk_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(message, reply_markup=ReplyKeyboardRemove())
     return VK_TOKEN
 
+async def set_vk_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # TODO: Добавить проверку на правильность ссылки
+    params = update.message.text.split('#')[1].split('&')
+    for param in params:
+        if param.split('=')[0] == 'access_token':
+            context.user_data['org'].vk_token = encode_str(param.split('=')[1])
+            await crud.org_set_token(org=context.user_data['org'])
+            break
+    if context.user_data['org'].vk_token is None:
+        await update.message.reply_text(ts.SET_INFO_VK_ERROR)
+        return ConversationHandler.END
+    else:
+        await update.message.reply_text(ts.SET_INFO_VK_GROUP)
+        return VK_GROUP_URL
+
+
 async def set_vk_group_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     vk_token = update.message.text.strip()
-    result = await get_vk_group_id(vk_token)
-    if 'id' in result:
-        context.user_data['org'].vk_token = encode_str(update.message.text.strip())
-        context.user_data['org'].vk_group_id = result['id']
-        await crud.org_set_token(org=context.user_data['org'])
+    result = await get_vk_group_id(token= decode_str(context.user_data['org'].vk_token) ,group_link=update.message.text)
+    if 'group_id' in result:
+        context.user_data['org'].vk_group_id = result['group_id']
         await crud.org_set_vk_group_id(org=context.user_data['org'])
         await update.message.reply_text(ts.SET_INFO_VK_OK)
         return ConversationHandler.END
     else:
-        await update.message.reply_text(ts.SET_INFO_VK_TOKEN_ERROR)
+        await update.message.reply_text(ts.SET_INFO_VK_GROUP_ERROR)
         await update.message.reply_text(result['error_msg'])
         return VK_TOKEN
 
@@ -347,7 +361,8 @@ if __name__ == '__main__':
             YD_LOGIN: [MessageHandler(filters.TEXT, get_yd_pass)],
             YD_PASS: [MessageHandler(filters.TEXT, get_yd_url)],
             YD_URL: [MessageHandler(filters.TEXT, get_vk_token)],
-            VK_TOKEN: [MessageHandler(filters.TEXT, set_vk_group_id)],
+            VK_TOKEN: [MessageHandler(filters.TEXT, set_vk_token)],
+            VK_GROUP_URL: [MessageHandler(filters.TEXT, set_vk_group_id)],
         },
         fallbacks=[CommandHandler('cancel', cancel)]
     )
