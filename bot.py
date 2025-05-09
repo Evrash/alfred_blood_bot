@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, ConversationHandler, MessageHandler, filters, CallbackQueryHandler
+from datetime import datetime
 
 from config import settings
 import text_strings as ts
@@ -124,8 +125,8 @@ async def light_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
             light_template[group] = 'red'
 
     # Формируем строку с состоянием светофора для YD
-    colors = ['2'] * 8
-    for count, value in enumerate(light_template.items()):
+    colors = ['0'] * 8
+    for count, value in enumerate(light_template.values()):
         match value:
             case 'yellow':
                 colors[count] = '1'
@@ -148,22 +149,25 @@ async def light_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     image = LightImage(img_template, light_template, org_str)
     image.draw_image()
-
-
     msg = make_message(light=light_template)
+    msg_author = f"Светофор сформирован {update.callback_query.from_user.full_name}"
+    if update.callback_query.from_user.username:
+        msg_author += ' @' + update.callback_query.from_user.username
     # if context.user_data['yellow_list']:
     #     msg = f'🟡 {get_text_from_groups(context.user_data['yellow_list'])}\n'
     # if context.user_data['red_list']:
     #     msg += f'🔴 {get_text_from_groups(context.user_data['red_list'])}\n'
+    await update.callback_query.edit_message_text(text=ts.IMG_READY)
     if org:
         org.vk_last_light_post = msg
-        await crud.set_vk_last_light_post(org)
-    await update.callback_query.edit_message_text(text=msg)
-    await context.bot.send_document(chat_id=update.effective_message.chat_id,
-                                    document=open(image.image_name, 'rb'))
-
-
-
+        org.last_create_date = datetime.now()
+        org.last_image_name = image.image_name.name
+        await crud.set_last_light_post_info(org)
+        org_users = await crud.get_org_users(org.id)
+        for user in org_users:
+            await context.bot.send_message(chat_id=user.tg_id, text=msg)
+            await context.bot.send_document(chat_id=user.tg_id, document=open(image.image_name, 'rb'))
+            await context.bot.send_message(chat_id=user.tg_id, text=msg_author)
     return END
 
 async def cancel(update:Update, context:ContextTypes.DEFAULT_TYPE):
