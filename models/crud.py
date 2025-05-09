@@ -46,7 +46,15 @@ async def get_org_admins(org_id: int) -> list[User] | None:
         stmt = select(User).where(User.is_admin == True, User.organisation_id == org_id)
         result = await conn.execute(stmt)
         if result:
-            return result.scalar()
+            return result.scalars().all()
+        return None
+
+async def get_org_users(org_id: int) -> list[User] | None:
+    async with db_helper.session_factory() as conn:
+        stmt = select(User).where(User.organisation_id == org_id)
+        result = await conn.execute(stmt)
+        if result:
+            return result.scalars().all()
         return None
 
 async def get_organisation_by_name(name: str) -> Organisation | None:
@@ -137,6 +145,19 @@ async def set_vk_last_light_post(org: Organisation):
         stmt = (
             update(Organisation)
             .values(vk_last_light_post = org.vk_last_light_post)
+            .filter_by(id=org.id)
+        )
+        print(stmt)
+        await conn.execute(stmt)
+        await conn.commit()
+
+async def set_last_light_post_info(org: Organisation):
+    async with (db_helper.session_factory() as conn):
+        stmt = (
+            update(Organisation)
+            .values(vk_last_light_post = org.vk_last_light_post,
+                    last_create_date = org.last_create_date,
+                    last_image_name = org.last_image_name)
             .filter_by(id=org.id)
         )
         print(stmt)
