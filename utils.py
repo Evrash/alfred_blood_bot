@@ -80,9 +80,11 @@ def make_message(light: dict[str:str], start_text: str=None, end_text: str = Non
             if value == 'red':
                 red_str += f'{settings.group.__getattribute__(group)}, '
         if yellow_str:
-            message_str += f'Есть потребность:\n🟡 {yellow_str.rstrip(', ')}\n'
+            # message_str += f'Есть потребность:\n🟡 {yellow_str.rstrip(', ')}\n'
+            message_str += f'Есть потребность:\n{'\n'.join([f'🟡 {x}' for x in yellow_str.rstrip(', ').split(', ')])}\n'
         if red_str:
-            message_str += f'Повышенная потребность:\n🔴 {red_str.rstrip(', ')}\n'
+            # message_str += f'Повышенная потребность:\n🔴 {red_str.rstrip(', ')}\n'
+            message_str += f'Повышенная потребность:\n{'\n'.join([f'🔴 {x}' for x in red_str.rstrip(', ').split(', ')])}\n'
         if end_text:
             message_str += f'{end_text}\n'
         else:
