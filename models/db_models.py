@@ -21,6 +21,7 @@ class Organisation(Base):
     __tablename__ = 'organisations'
 
     name: Mapped[str] = mapped_column(String, nullable=False)
+    join_password: Mapped[str] = mapped_column(String, nullable=True)
     vk_token: Mapped[str] = mapped_column(String, nullable=True)
     vk_group_id: Mapped[int] = mapped_column(Integer, nullable=True)
     vk_last_light_post: Mapped[str] = mapped_column(String, nullable=True)

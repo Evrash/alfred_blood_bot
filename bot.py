@@ -23,8 +23,8 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
-STEP_YELLOW, STEP_RED, STEP_DONE, MAKE_IMAGE = range(4)
-VK_GROUP_URL, VK_TOKEN, YD_URL, YD_PASS, YD_LOGIN, STEP_CHOICE, ORG_NAME, JOIN_TO_ORG, SET_TIME, SET_HASHTAG, SET_TEXT, SET_END_TEXT, ORG_RENAME = range(4,17)
+STEP_YELLOW, STEP_RED, STEP_DONE, MAKE_IMAGE, STEP_PASSWORD = range(5)
+VK_GROUP_URL, VK_TOKEN, YD_URL, YD_PASS, YD_LOGIN, STEP_CHOICE, ORG_NAME, JOIN_TO_ORG, SET_TIME, SET_HASHTAG, SET_TEXT, SET_END_TEXT, ORG_RENAME = range(10,23)
 END = ConversationHandler.END
 
 def get_keyboard(step_in: int, step_out: int, bt_text: str):
@@ -220,6 +220,12 @@ async def set_info_org(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user.is_admin = True
         await crud.user_set_org(user=user)
     context.user_data['org'] = org
+    await update.message.reply_text(ts.SET_INFO_PASSWORD)
+    return STEP_PASSWORD
+
+async def set_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['org'].join_password = update.message.text.strip()
+    await crud.org_set_password(org=context.user_data['org'])
     await update.message.reply_text(ts.SET_INFO_EXPL)
     reply_keyboard = [[ts.BTN_GRANT_ALL], [ts.BTN_GRANT_VK], [ts.BTN_GRANT_YD], [ts.BTN_GRANT_NONE]]
     await update.message.reply_text(ts.SET_INFO_EXPL_QUEST,
@@ -456,6 +462,7 @@ if __name__ == '__main__':
         states={
             ORG_RENAME: [MessageHandler(filters.TEXT & (~ filters.COMMAND), set_info_start)],
             ORG_NAME: [MessageHandler(filters.TEXT & (~ filters.COMMAND), set_info_org)],
+            STEP_PASSWORD: [MessageHandler(filters.TEXT & (~ filters.COMMAND), set_password)],
             STEP_CHOICE: [MessageHandler(filters.TEXT & (~ filters.COMMAND), set_choice)],
             YD_LOGIN: [MessageHandler(filters.TEXT & (~ filters.COMMAND), get_yd_pass)],
             YD_PASS: [MessageHandler(filters.TEXT & (~ filters.COMMAND), get_yd_url)],

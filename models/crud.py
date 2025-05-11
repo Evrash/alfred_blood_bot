@@ -94,6 +94,17 @@ async def org_set_token(org: Organisation):
         await conn.execute(stmt)
         await conn.commit()
 
+async def org_set_password(org: Organisation):
+    async with (db_helper.session_factory() as conn):
+        stmt = (
+            update(Organisation)
+            .values(join_password = org.join_password)
+            .filter_by(id=org.id)
+        )
+        print(stmt)
+        await conn.execute(stmt)
+        await conn.commit()
+
 async def org_set_name(org: Organisation):
     async with (db_helper.session_factory() as conn):
         stmt = (
