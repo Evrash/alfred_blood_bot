@@ -19,7 +19,7 @@ logging.basicConfig(
     level=logging.INFO
 )
 STEP_YELLOW, STEP_RED, STEP_DONE, MAKE_IMAGE = range(4)
-VK_GROUP_URL, VK_TOKEN, YD_URL, YD_PASS, YD_LOGIN, STEP_CHOICE, ORG_NAME, JOIN_TO_ORG, SET_TIME, SET_HASHTAG, SET_START_TEXT, SET_END_TEXT, = range(4,16)
+VK_GROUP_URL, VK_TOKEN, YD_URL, YD_PASS, YD_LOGIN, STEP_CHOICE, ORG_NAME, JOIN_TO_ORG, SET_TIME, SET_HASHTAG, SET_START_TEXT, SET_END_TEXT, ORG_RENAME = range(4,17)
 END = ConversationHandler.END
 
 def get_keyboard(step_in: int, step_out: int, bt_text: str):
@@ -125,13 +125,13 @@ async def light_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
             light_template[group] = 'red'
 
     # Формируем строку с состоянием светофора для YD
-    colors = ['0'] * 8
+    colors = ['2'] * 8
     for count, value in enumerate(light_template.values()):
         match value:
             case 'yellow':
                 colors[count] = '1'
             case 'red':
-                colors[count] = '2'
+                colors[count] = '0'
     yd_group_str = ','.join(colors)
 
     # Получаем данные для светофора
@@ -179,32 +179,45 @@ async def set_info_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user: User = await crud.get_user(tg_id=update.effective_user.id)
     if not user:
         user = await crud.create_user(tg_id=update.effective_user.id)
-    if user.organisation_id is None:
+    if user.organisation_id is None or update.message.text == ts.BTN_YES:
         # context.user_data['User'] = User.get(User.telegram_chat_id == update.effective_user.id)
-        message = ts.SET_INFO_ORG_NAME
-        await update.message.reply_text(message)
+        await update.message.reply_text(ts.SET_INFO_ORG_NAME)
         return ORG_NAME
-    else:
-        await update.message.reply_text(ts.SET_INFO_DBL_REG)
+    elif update.message.text == ts.BTN_NO:
+        await update.message.reply_text(ts.SET_INFO_NO_RENAME)
         return ConversationHandler.END
+    else:
+        reply_keyboard = [[ts.BTN_YES, ts.BTN_NO]]
+        await update.message.reply_text(ts.SET_INFO_DBL_REG,
+                                        reply_markup=ReplyKeyboardMarkup(reply_keyboard,one_time_keyboard=True))
+        context.user_data['rename'] = True
+        return ORG_RENAME
 
 async def set_info_org(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    org = await crud.get_organisation_by_name(name=update.message.text.strip())
-    if org:
-        await update.message.reply_text(ts.SET_INFO_SAME_ORG)
-        #TODO: Добвить сброс организации
-        return ConversationHandler.END
-    org: Organisation = await crud.create_organisation(name=update.message.text)
-    user: User = await crud.get_user(tg_id=update.effective_user.id)
-    user.organisation = org
-    user.is_admin = True
-    await crud.user_set_org(user=user)
+    if context.user_data.get('rename'):
+        user = await crud.get_user(tg_id=update.effective_user.id)
+        org = await crud.get_org_by_tg_id(user.tg_id)
+        if not user.is_admin:
+            await update.message.reply_text(ts.SET_INFO_NOT_ADMIN)
+            return ConversationHandler.END
+        org.name = update.message.text.strip()
+        await crud.org_set_name(org)
+    else:
+        org = await crud.get_organisation_by_name(name=update.message.text.strip())
+        if org:
+            await update.message.reply_text(ts.SET_INFO_SAME_ORG)
+            #TODO: Добвить сброс организации
+            return ConversationHandler.END
+        org: Organisation = await crud.create_organisation(name=update.message.text)
+        user: User = await crud.get_user(tg_id=update.effective_user.id)
+        user.organisation = org
+        user.is_admin = True
+        await crud.user_set_org(user=user)
     context.user_data['org'] = org
-    message = ts.SET_INFO_EXPL
-    await update.message.reply_text(message)
-    message = ts.SET_INFO_EXPL_QUEST
+    await update.message.reply_text(ts.SET_INFO_EXPL)
     reply_keyboard = [[ts.BTN_GRANT_ALL], [ts.BTN_GRANT_VK], [ts.BTN_GRANT_YD], [ts.BTN_GRANT_NONE]]
-    await update.message.reply_text(message, reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
+    await update.message.reply_text(ts.SET_INFO_EXPL_QUEST,
+                                    reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
     return STEP_CHOICE
 
 async def set_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -287,11 +300,12 @@ async def set_vk_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def set_vk_group_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     vk_token = update.message.text.strip()
-    result = await get_vk_group_id(token= decode_str(context.user_data['org'].vk_token) ,group_link=update.message.text)
+    result = await get_vk_group_id(token=decode_str(context.user_data['org'].vk_token), group_link=update.message.text)
     if 'group_id' in result:
         context.user_data['org'].vk_group_id = result['group_id']
         await crud.org_set_vk_group_id(org=context.user_data['org'])
         await update.message.reply_text(ts.SET_INFO_VK_OK)
+        context.user_data.pop('org')
         return ConversationHandler.END
     else:
         await update.message.reply_text(ts.SET_INFO_VK_GROUP_ERROR)
@@ -311,27 +325,31 @@ async def publish_everywhere(update: Update, context: ContextTypes.DEFAULT_TYPE)
             await update.message.reply_text(ts.NO_LOGIN_DATA)
         user = await crud.get_user(tg_id=update.effective_user.id)
         if org.yd_login and org.yd_pass and org.yd_station_id and org.yd_groups_ids and user.is_admin:
-            if org.yd_last_pub_date > org.last_create_date:
+            if org.yd_last_pub_date and org.yd_last_pub_date > org.last_create_date:
                 await update.message.reply_text(ts.ALREADY_PUB)
             else:
                 await update.message.reply_text(ts.YD_PUB_POS)
                 await publish_to_yd(login=decode_str(org.yd_login), password=decode_str(org.yd_pass),
                                     station_id=org.yd_station_id, group_ids=org.yd_groups_ids,
-                                    group_vals=org.last_group_state)
+                                    group_vals=org.last_yd_str)
                 await crud.set_yd_last_pub_date(org=org)
                 await send_to_admins(org_id=org.id, text=ts.YD_PUB_SUCCESS)
         if org.vk_token and org.vk_group_id and user.is_admin:
-            await update.message.reply_text(ts.VK_PUB_POS)
-            post_id = await publish_to_vk(vk_token=decode_str(org.vk_token), org_dir=f'org{str(org.id)}',
-                                          group_id=org.vk_group_id, is_pin=org.vk_is_pin_image,
-                                          prev_post_id=org.vk_last_post_id, text=org.vk_last_light_post,
-                                          image_name=org.last_image_name)
-            if 'post_id' in post_id:
-                org.vk_last_post_id = post_id
-                await crud.set_vk_last_post_id(org=org)
-                await send_to_admins(org_id=org.id, text=ts.VK_PUB_SUCCESS)
+            if org.vk_last_pub_date and org.vk_last_pub_date > org.last_create_date:
+                await update.message.reply_text(ts.ALREADY_PUB)
             else:
-                await send_to_admins(org_id=org.id, text=ts.VK_PUB_FAIL)
+                await update.message.reply_text(ts.VK_PUB_POS)
+                post_id = await publish_to_vk(vk_token=decode_str(org.vk_token), org_dir=f'org{str(org.id)}',
+                                              group_id=org.vk_group_id, is_pin=org.vk_is_pin_image,
+                                              prev_post_id=org.vk_last_post_id, text=org.vk_last_light_post,
+                                              image_name=org.last_image_name)
+                if 'post_id' in post_id:
+                    org.vk_last_post_id = post_id['post_id']
+                    org.vk_last_pub_date = datetime.now()
+                    await crud.set_vk_last_post_id(org=org)
+                    await send_to_admins(org_id=org.id, text=ts.VK_PUB_SUCCESS)
+                else:
+                    await send_to_admins(org_id=org.id, text=ts.VK_PUB_FAIL)
     else:
         await update.message.reply_text(ts.NO_ORG_DATA)
 
@@ -360,12 +378,13 @@ if __name__ == '__main__':
     info_handler = ConversationHandler(
         entry_points=[CommandHandler('info', set_info_start)],
         states={
-            ORG_NAME: [MessageHandler(filters.TEXT, set_info_org)],
-            STEP_CHOICE: [MessageHandler(filters.TEXT, set_choice)],
-            YD_LOGIN: [MessageHandler(filters.TEXT, get_yd_pass)],
-            YD_PASS: [MessageHandler(filters.TEXT, get_yd_url)],
-            YD_URL: [MessageHandler(filters.TEXT, get_vk_token)],
-            VK_TOKEN: [MessageHandler(filters.TEXT, set_vk_token)],
+            ORG_RENAME: [MessageHandler(filters.TEXT & (~ filters.COMMAND), set_info_start)],
+            ORG_NAME: [MessageHandler(filters.TEXT & (~ filters.COMMAND), set_info_org)],
+            STEP_CHOICE: [MessageHandler(filters.TEXT & (~ filters.COMMAND), set_choice)],
+            YD_LOGIN: [MessageHandler(filters.TEXT & (~ filters.COMMAND), get_yd_pass)],
+            YD_PASS: [MessageHandler(filters.TEXT & (~ filters.COMMAND), get_yd_url)],
+            YD_URL: [MessageHandler(filters.TEXT & (~ filters.COMMAND), get_vk_token)],
+            VK_TOKEN: [MessageHandler(filters.TEXT & (~ filters.COMMAND), set_vk_token)],
             VK_GROUP_URL: [MessageHandler(filters.TEXT, set_vk_group_id)],
         },
         fallbacks=[CommandHandler('cancel', cancel)]

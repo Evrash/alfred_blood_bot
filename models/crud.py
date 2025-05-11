@@ -94,6 +94,17 @@ async def org_set_token(org: Organisation):
         await conn.execute(stmt)
         await conn.commit()
 
+async def org_set_name(org: Organisation):
+    async with (db_helper.session_factory() as conn):
+        stmt = (
+            update(Organisation)
+            .values(name = org.name)
+            .filter_by(id=org.id)
+        )
+        print(stmt)
+        await conn.execute(stmt)
+        await conn.commit()
+
 async def org_set_vk_group_id(org: Organisation):
     async with (db_helper.session_factory() as conn):
         stmt = (
@@ -168,7 +179,7 @@ async def set_vk_last_post_id(org: Organisation):
     async with (db_helper.session_factory() as conn):
         stmt = (
             update(Organisation)
-            .values(vk_last_post_id = org.vk_last_post_id)
+            .values(vk_last_post_id = org.vk_last_post_id, vk_last_pub_date = org.vk_last_pub_date)
             .filter_by(id=org.id)
         )
         print(stmt)
