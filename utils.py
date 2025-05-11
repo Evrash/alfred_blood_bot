@@ -90,7 +90,7 @@ def make_message(light: dict[str:str], start_text: str=None, end_text: str = Non
         else:
             message_str += ('Ждем доноров на кроводачу (не плазму⛔) без предварительной записи '
                             '(возможность сдачи Вами крови '
-                            'рекомендуем уточнить по телефону 286-013)')
+                            'рекомендуем уточнить по телефону 286-013)\n')
     if hashtag:
         message_str += f'{hashtag}\n'
     return message_str

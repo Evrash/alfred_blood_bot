@@ -18,6 +18,11 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
+
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
+logger = logging.getLogger(__name__)
+
 STEP_YELLOW, STEP_RED, STEP_DONE, MAKE_IMAGE = range(4)
 VK_GROUP_URL, VK_TOKEN, YD_URL, YD_PASS, YD_LOGIN, STEP_CHOICE, ORG_NAME, JOIN_TO_ORG, SET_TIME, SET_HASHTAG, SET_TEXT, SET_END_TEXT, ORG_RENAME = range(4,17)
 END = ConversationHandler.END
@@ -66,7 +71,7 @@ async def start_image_inline(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def more_yellow_inline(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Выбор жёлтых групп крови"""
     query = update.callback_query
-    print(query.data)
+    # print(query.data)
     blood_group: str = query.data.split('__')[-1]
     await query.answer()
     if not context.user_data['yellow_list']:
@@ -85,7 +90,7 @@ async def more_yellow_inline(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def red_inline(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Выбор красных групп крови"""
     query = update.callback_query
-    print(query.data)
+    # print(query.data)
     await query.answer()
     if '__' in query.data:
         blood_group: str = query.data.split('__')[-1]
@@ -99,7 +104,7 @@ async def red_inline(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return MAKE_IMAGE
     inline_keyboard = get_keyboard(STEP_RED, STEP_DONE, ts.BTN_DONE)
     reply_markup = InlineKeyboardMarkup(inline_keyboard)
-    print(query)
+    # print(query)
     msg = ''
     if context.user_data['yellow_list']:
         msg = f'Выбрали 🟡 {get_text_from_groups(context.user_data['yellow_list'])}\n'
@@ -400,6 +405,29 @@ async def set_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(ts.SET_TEXT_NOT_CHG)
     return ConversationHandler.END
 
+#Функции сохранения хештегов
+async def get_hashtag(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    org = crud.get_org_by_tg_id(update.effective_user.id)
+    if not org:
+        await update.message.reply_text(ts.SET_TEXT_ORG_REQ)
+        return ConversationHandler.END
+    user = await crud.get_user(update.effective_user.id)
+    if not user.is_admin:
+        await update.message.reply_text(ts.ADMIN_REQ)
+        return ConversationHandler.END
+    await update.message.reply_text(ts.SET_HASHTAG)
+    return SET_HASHTAG
+
+async def set_hashtag(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message.text.strip():
+        org = await crud.get_org_by_tg_id(update.effective_user.id)
+        org.hashtag = update.message.text.strip()
+        await crud.set_hashtag(org=org)
+        await update.message.reply_text(ts.SET_TEXT_DONE)
+    else:
+        await update.message.reply_text(ts.SET_TEXT_NOT_CHG)
+    return ConversationHandler.END
+
 
 if __name__ == '__main__':
     application = ApplicationBuilder().token(settings.token).build()
@@ -454,6 +482,13 @@ if __name__ == '__main__':
         },
         fallbacks=[CommandHandler('cancel', cancel)]
     )
+    hashtag_handler = ConversationHandler(
+        entry_points=[CommandHandler('hashtag', get_hashtag)],
+        states={
+            SET_HASHTAG: [MessageHandler(filters.TEXT & (~ filters.COMMAND), set_hashtag)],
+        },
+        fallbacks=[CommandHandler('cancel', cancel)]
+    )
 
     application.add_handler(start_handler)
     application.add_handler(image_handler)
@@ -461,5 +496,6 @@ if __name__ == '__main__':
     application.add_handler(publish_handler)
     application.add_handler(start_text_handler)
     application.add_handler(end_text_handler)
+    application.add_handler(hashtag_handler)
 
     application.run_polling()

@@ -206,6 +206,17 @@ async def set_org_text(org: Organisation, start: bool | None = None, end: bool |
         await conn.execute(stmt)
         await conn.commit()
 
+async def set_hashtag(org: Organisation):
+    async with (db_helper.session_factory() as conn):
+        stmt = (
+            update(Organisation)
+            .values(hashtag = org.hashtag)
+            .filter_by(id=org.id)
+        )
+        print(stmt)
+        await conn.execute(stmt)
+        await conn.commit()
+
 # async def update_user(user: User):
 
 # async def get_user_org(tg_id: int) -> Organisation:
