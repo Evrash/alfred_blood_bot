@@ -80,9 +80,9 @@ def make_message(light: dict[str:str], start_text: str=None, end_text: str = Non
             if value == 'red':
                 red_str += f'{settings.group.__getattribute__(group)}, '
         if yellow_str:
-            message_str += f'Недостаточно крови:\n🟡 {yellow_str.rstrip(', ')}\n'
+            message_str += f'Есть потребность:\n🟡 {yellow_str.rstrip(', ')}\n'
         if red_str:
-            message_str += f'Острая нехватка крови:\n🔴 {red_str.rstrip(', ')}\n'
+            message_str += f'Повышенная потребность:\n🔴 {red_str.rstrip(', ')}\n'
         if end_text:
             message_str += end_text
         else:
@@ -111,6 +111,7 @@ async def get_vk_group_id(token:str, group_link: str):
 
 async def publish_to_yd(login, password, station_id, group_ids, group_vals):
     groups = ['reserv[' + x + ']' for x in group_ids.split(',')]
+    blood_reserve_id = group_ids.split(',')[0]
     vals = group_vals.split(',')
     yd_data = dict(zip(groups, vals))
     yd_data['spk_id'] = station_id
@@ -119,8 +120,9 @@ async def publish_to_yd(login, password, station_id, group_ids, group_vals):
         await client.post('https://adm.yadonor.ru/index.php?obj=BLOOD_STATIONS',
                           data={'login': login, 'password': password})
         # TODO: Исправть reservid
-        await client.post(f'https://adm.yadonor.ru/index.php?obj=BLOOD_RESERVE&action=change&BLOOD_RESERVE_ID={groups[0]}&BLOOD_STATIONS_ID={station_id}'
+        r = await client.post(f'https://adm.yadonor.ru/index.php?obj=BLOOD_RESERVE&action=change&BLOOD_RESERVE_ID={blood_reserve_id}&BLOOD_STATIONS_ID={station_id}'
                           , data=yd_data)
+        print(r.request)
 
 async def publish_to_vk(vk_token: str, org_dir: str, image_name: str, group_id: int, text: str, is_pin: bool =True,
                         prev_post_id: int=None):
