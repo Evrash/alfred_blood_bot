@@ -69,7 +69,7 @@ def make_message(light: dict[str:str], start_text: str=None, end_text: str = Non
     else:
 
         if start_text:
-            message_str = start_text + '\n'
+            message_str = f'{start_text}\n'
         else:
             message_str = 'Уважаемые доноры, на сегодняшний день наш «Донорский светофор» выглядит следующим образом:\n'
         yellow_str = ''
@@ -84,11 +84,11 @@ def make_message(light: dict[str:str], start_text: str=None, end_text: str = Non
         if red_str:
             message_str += f'Повышенная потребность:\n🔴 {red_str.rstrip(', ')}\n'
         if end_text:
-            message_str += end_text
+            message_str += f'{end_text}\n'
         else:
             message_str += ('Ждем доноров на кроводачу (не плазму⛔) без предварительной записи '
                             '(возможность сдачи Вами крови '
-                            'рекомендуем уточнить по телефону 286-013)\n')
+                            'рекомендуем уточнить по телефону 286-013)')
     if hashtag:
         message_str += f'{hashtag}\n'
     return message_str

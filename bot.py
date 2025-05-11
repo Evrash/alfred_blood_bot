@@ -19,7 +19,7 @@ logging.basicConfig(
     level=logging.INFO
 )
 STEP_YELLOW, STEP_RED, STEP_DONE, MAKE_IMAGE = range(4)
-VK_GROUP_URL, VK_TOKEN, YD_URL, YD_PASS, YD_LOGIN, STEP_CHOICE, ORG_NAME, JOIN_TO_ORG, SET_TIME, SET_HASHTAG, SET_START_TEXT, SET_END_TEXT, ORG_RENAME = range(4,17)
+VK_GROUP_URL, VK_TOKEN, YD_URL, YD_PASS, YD_LOGIN, STEP_CHOICE, ORG_NAME, JOIN_TO_ORG, SET_TIME, SET_HASHTAG, SET_TEXT, SET_END_TEXT, ORG_RENAME = range(4,17)
 END = ConversationHandler.END
 
 def get_keyboard(step_in: int, step_out: int, bt_text: str):
@@ -47,11 +47,12 @@ def get_text_from_groups(groups: list):
         return ', '.join(settings.group.__getattribute__(x) for x in groups)
     return ''
 
+# Старт
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await crud.get_or_create(tg_id=update.effective_chat.id)
     await context.bot.send_message(chat_id=update.effective_chat.id, text=ts.MESSAGE_START)
 
-#Функции генерации светофора
+# Функции генерации светофора
 async def start_image_inline(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Старт генерации донорского светофора"""
     context.user_data['yellow_list'] = []
@@ -149,16 +150,12 @@ async def light_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     image = LightImage(img_template, light_template, org_str)
     image.draw_image()
-    msg = make_message(light=light_template)
-    msg_author = f"Светофор сформирован {update.callback_query.from_user.full_name}"
-    if update.callback_query.from_user.username:
-        msg_author += ' @' + update.callback_query.from_user.username
-    # if context.user_data['yellow_list']:
-    #     msg = f'🟡 {get_text_from_groups(context.user_data['yellow_list'])}\n'
-    # if context.user_data['red_list']:
-    #     msg += f'🔴 {get_text_from_groups(context.user_data['red_list'])}\n'
     await update.callback_query.edit_message_text(text=ts.IMG_READY)
     if org:
+        msg = make_message(light=light_template, start_text=org.start_text, end_text=org.end_text, hashtag=org.hashtag)
+        msg_author = f"Светофор сформирован {update.callback_query.from_user.full_name}"
+        if update.callback_query.from_user.username:
+            msg_author += ' @' + update.callback_query.from_user.username
         org.vk_last_light_post = msg
         org.last_create_date = datetime.now()
         org.last_image_name = image.image_name.name
@@ -168,6 +165,10 @@ async def light_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_message(chat_id=user.tg_id, text=msg)
             await context.bot.send_document(chat_id=user.tg_id, document=open(image.image_name, 'rb'))
             await context.bot.send_message(chat_id=user.tg_id, text=msg_author)
+    else:
+        msg = make_message(light=light_template)
+        await update.message.reply_text(msg)
+        await context.bot.send_document(chat_id=user.tg_id, document=open(image.image_name, 'rb'))
     return END
 
 async def cancel(update:Update, context:ContextTypes.DEFAULT_TYPE):
@@ -324,6 +325,9 @@ async def publish_everywhere(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if not (org.vk_token and org.vk_group_id and org.yd_login and org.yd_pass):
             await update.message.reply_text(ts.NO_LOGIN_DATA)
         user = await crud.get_user(tg_id=update.effective_user.id)
+        if not user.is_admin:
+            await update.message.reply_text(ts.ADMIN_REQ)
+            return ConversationHandler.END
         if org.yd_login and org.yd_pass and org.yd_station_id and org.yd_groups_ids and user.is_admin:
             if org.yd_last_pub_date and org.yd_last_pub_date > org.last_create_date:
                 await update.message.reply_text(ts.ALREADY_PUB)
@@ -352,6 +356,50 @@ async def publish_everywhere(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     await send_to_admins(org_id=org.id, text=ts.VK_PUB_FAIL)
     else:
         await update.message.reply_text(ts.NO_ORG_DATA)
+        return ConversationHandler.END
+
+#Функции сохранения начала и конца текста
+async def get_start_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    org = crud.get_org_by_tg_id(update.effective_user.id)
+    if not org:
+        await update.message.reply_text(ts.SET_TEXT_ORG_REQ)
+        return ConversationHandler.END
+    user = await crud.get_user(update.effective_user.id)
+    if not user.is_admin:
+        await update.message.reply_text(ts.ADMIN_REQ)
+        return ConversationHandler.END
+    await update.message.reply_text(ts.SET_START_TEXT)
+    context.user_data['text'] = 'start'
+    return SET_TEXT
+
+async def get_end_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    org = crud.get_org_by_tg_id(update.effective_user.id)
+    if not org:
+        await update.message.reply_text(ts.SET_TEXT_ORG_REQ)
+        return ConversationHandler.END
+    user = await crud.get_user(update.effective_user.id)
+    if not user.is_admin:
+        await update.message.reply_text(ts.ADMIN_REQ)
+        return ConversationHandler.END
+    await update.message.reply_text(ts.SET_START_TEXT)
+    context.user_data['text'] = 'end'
+    return SET_TEXT
+
+async def set_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = context.user_data.pop('text')
+    if update.message.text.strip():
+        org = await crud.get_org_by_tg_id(update.effective_user.id)
+        if text == 'start':
+            org.start_text = update.message.text.strip()
+            await crud.set_org_text(org=org, start=True)
+        if text == 'end':
+            org.end_text = update.message.text.strip()
+            await crud.set_org_text(org=org, end=True)
+        await update.message.reply_text(ts.SET_TEXT_DONE)
+    else:
+        await update.message.reply_text(ts.SET_TEXT_NOT_CHG)
+    return ConversationHandler.END
+
 
 if __name__ == '__main__':
     application = ApplicationBuilder().token(settings.token).build()
@@ -392,9 +440,26 @@ if __name__ == '__main__':
 
     publish_handler = CommandHandler('pub', publish_everywhere)
 
+    start_text_handler = ConversationHandler(
+        entry_points=[CommandHandler('start_text', get_start_text)],
+        states={
+            SET_TEXT: [MessageHandler(filters.TEXT & (~ filters.COMMAND), set_text)],
+        },
+        fallbacks=[CommandHandler('cancel', cancel)]
+    )
+    end_text_handler = ConversationHandler(
+        entry_points=[CommandHandler('end_text', get_end_text)],
+        states={
+            SET_TEXT: [MessageHandler(filters.TEXT & (~ filters.COMMAND), set_text)],
+        },
+        fallbacks=[CommandHandler('cancel', cancel)]
+    )
+
     application.add_handler(start_handler)
     application.add_handler(image_handler)
     application.add_handler(info_handler)
     application.add_handler(publish_handler)
+    application.add_handler(start_text_handler)
+    application.add_handler(end_text_handler)
 
     application.run_polling()
