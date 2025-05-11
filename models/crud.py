@@ -186,6 +186,26 @@ async def set_vk_last_post_id(org: Organisation):
         await conn.execute(stmt)
         await conn.commit()
 
+async def set_org_text(org: Organisation, start: bool | None = None, end: bool | None = None):
+    if not start and not end:
+        return None
+    async with (db_helper.session_factory() as conn):
+        if start:
+            stmt = (
+                update(Organisation)
+                .values(start_text = org.start_text)
+                .filter_by(id=org.id)
+            )
+        if end:
+            stmt = (
+                update(Organisation)
+                .values(end_text = org.end_text)
+                .filter_by(id=org.id)
+            )
+        print(stmt)
+        await conn.execute(stmt)
+        await conn.commit()
+
 # async def update_user(user: User):
 
 # async def get_user_org(tg_id: int) -> Organisation:
