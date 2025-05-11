@@ -41,6 +41,14 @@ async def get_org_by_tg_id(tg_id: int) -> Organisation | None:
             return result.scalar()
         return None
 
+async def get_org_by_id(id: int) -> Organisation | None:
+    async with db_helper.session_factory() as conn:
+        stmt = select(Organisation).where(Organisation.id == id)
+        result = await conn.execute(stmt)
+        if result:
+            return result.scalar()
+        return None
+
 async def get_org_admins(org_id: int) -> list[User] | None:
     async with db_helper.session_factory() as conn:
         stmt = select(User).where(User.is_admin == True, User.organisation_id == org_id)
@@ -63,6 +71,15 @@ async def get_organisation_by_name(name: str) -> Organisation | None:
         result = await conn.execute(stmt)
         if result:
             return result.scalar()
+        return None
+
+async def get_all_orgs() -> list[Organisation] | None:
+    async with db_helper.session_factory() as conn:
+        # result = await conn.get(User, tg_id)
+        stmt = select(Organisation)
+        result = await conn.execute(stmt)
+        if result:
+            return result.scalars().all()
         return None
 
 async def create_organisation(name: str) -> Organisation:

@@ -24,7 +24,8 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 STEP_YELLOW, STEP_RED, STEP_DONE, MAKE_IMAGE, STEP_PASSWORD = range(5)
-VK_GROUP_URL, VK_TOKEN, YD_URL, YD_PASS, YD_LOGIN, STEP_CHOICE, ORG_NAME, JOIN_TO_ORG, SET_TIME, SET_HASHTAG, SET_TEXT, SET_END_TEXT, ORG_RENAME = range(10,23)
+VK_GROUP_URL, VK_TOKEN, YD_URL, YD_PASS, YD_LOGIN, STEP_CHOICE, ORG_NAME, SET_TIME, SET_HASHTAG, SET_TEXT, SET_END_TEXT, ORG_RENAME = range(10,22)
+JOIN_TO_ORG, JOIN_PASSWORD = range(30,32)
 END = ConversationHandler.END
 
 def get_keyboard(step_in: int, step_out: int, bt_text: str):
@@ -178,6 +179,7 @@ async def light_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cancel(update:Update, context:ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Выполнение задания прервано.", reply_markup=ReplyKeyboardRemove())
+    context.user_data.clear()
     return ConversationHandler.END
 
 # Функции для сбора информации о пользователе
@@ -434,6 +436,43 @@ async def set_hashtag(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(ts.SET_TEXT_NOT_CHG)
     return ConversationHandler.END
 
+# Функции присоединения к организации
+async def join_to_org_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(ts.JOIN_TO_ORG_START)
+    orgs = await crud.get_all_orgs()
+    if not orgs:
+        await update.message.reply_text(ts.JOIN_TO_ORG_EMPTY)
+        return ConversationHandler.END
+    message = '\n'.join(f'{x.id} {x.name}' for x in orgs)
+    await update.message.reply_text(message)
+    return JOIN_PASSWORD
+
+async def join_to_org_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    org_id = update.message.text.strip()
+    if not org_id.isdigit():
+        await update.message.reply_text(ts.JOIN_TO_ORG_NOT_ID)
+        return JOIN_PASSWORD
+    org = await crud.get_org_by_id(id=int(org_id))
+    if org:
+        context.user_data['join_to_org'] = {'id':int(org_id), 'password':org.join_password}
+        await update.message.reply_text(ts.JOIN_TO_ORG_PASSWORD)
+        return JOIN_TO_ORG
+    else:
+        await update.message.reply_text(ts.JOIN_TO_ORG_FAULT)
+        return ConversationHandler.END
+
+async def join_to_org_end(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message.text == context.user_data['join_to_org']['password']:
+        user = await crud.get_user(update.effective_user.id)
+        user.organisation_id = context.user_data['join_to_org']['id']
+        user.is_admin = False
+        await crud.user_set_org(user=user)
+        await update.message.reply_text(ts.JOIN_TO_ORG_SUCCESS)
+        context.user_data.clear()
+        return ConversationHandler.END
+    else:
+        await update.message.reply_text(ts.JOIN_TO_ORG_PASSWORD_WRONG)
+        return JOIN_TO_ORG
 
 if __name__ == '__main__':
     application = ApplicationBuilder().token(settings.token).build()
@@ -497,6 +536,15 @@ if __name__ == '__main__':
         fallbacks=[CommandHandler('cancel', cancel)]
     )
 
+    join_handler = ConversationHandler(
+        entry_points=[CommandHandler('join', join_to_org_start)],
+        states={
+            JOIN_PASSWORD: [MessageHandler(filters.TEXT & (~ filters.COMMAND), join_to_org_password)],
+            JOIN_TO_ORG: [MessageHandler(filters.TEXT & (~ filters.COMMAND), join_to_org_end)],
+        },
+        fallbacks=[CommandHandler('cancel', cancel)]
+    )
+
     application.add_handler(start_handler)
     application.add_handler(image_handler)
     application.add_handler(info_handler)
@@ -504,5 +552,6 @@ if __name__ == '__main__':
     application.add_handler(start_text_handler)
     application.add_handler(end_text_handler)
     application.add_handler(hashtag_handler)
+    application.add_handler(join_handler)
 
     application.run_polling()
