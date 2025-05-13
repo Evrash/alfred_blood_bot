@@ -55,7 +55,8 @@ def get_text_from_groups(groups: list):
 
 # Старт
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await crud.get_or_create(tg_id=update.effective_chat.id)
+    await crud.get_or_create(tg_id=update.effective_chat.id, full_name=update.effective_user.full_name,
+                             username=update.effective_user.username)
     await context.bot.send_message(chat_id=update.effective_chat.id, text=ts.MESSAGE_START)
 
 # Функции генерации светофора
@@ -173,12 +174,19 @@ async def light_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_message(chat_id=user.tg_id, text=msg_author)
     else:
         msg = make_message(light=light_template)
-        await update.message.reply_text(msg)
+        await context.bot.send_message(chat_id=user.tg_id, text=msg)
         await context.bot.send_document(chat_id=user.tg_id, document=open(image.image_name, 'rb'))
     return END
 
 async def cancel(update:Update, context:ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Выполнение задания прервано.", reply_markup=ReplyKeyboardRemove())
+    context.user_data.clear()
+    return ConversationHandler.END
+
+async def query_cancel(update:Update, context:ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    await update.callback_query.edit_message_text(text="Выполнение задания прервано.")
     context.user_data.clear()
     return ConversationHandler.END
 
@@ -219,6 +227,7 @@ async def set_info_org(update: Update, context: ContextTypes.DEFAULT_TYPE):
         org: Organisation = await crud.create_organisation(name=update.message.text)
         user: User = await crud.get_user(tg_id=update.effective_user.id)
         user.organisation = org
+        user.organisation_id = org.id
         user.is_admin = True
         await crud.user_set_org(user=user)
     context.user_data['org'] = org
@@ -474,6 +483,27 @@ async def join_to_org_end(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(ts.JOIN_TO_ORG_PASSWORD_WRONG)
         return JOIN_TO_ORG
 
+# Функции назначения администратора
+async def start_org_adm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Старт добавления администратора"""
+    user = await crud.get_user(update.effective_user.id)
+    if not user.is_admin or not user.organisation_id:
+        await update.message.reply_text(ts.ADMIN_REQ)
+        return ConversationHandler.END
+    org_users = await crud.get_org_users(org_id=user.organisation_id)
+    if len(org_users) == 1:
+        await update.message.reply_text(ts.SET_ADMIN_NO_USERS)
+        return ConversationHandler.END
+    keyboard = []
+    for org_user in org_users:
+        if org_user.tg_id == user.tg_id:
+            continue
+        keyboard.append([InlineKeyboardButton(f'{org_user.full_name} {org_user.username}', callback_data=f'{org_user.id}')])
+    keyboard.append([InlineKeyboardButton(f'Отмена', callback_data='stop')])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(ts.SET_ADMIN_EXPL, reply_markup=reply_markup)
+    return MAKE_IMAGE
+
 if __name__ == '__main__':
     application = ApplicationBuilder().token(settings.token).build()
     start_handler = CommandHandler('start', start)
@@ -545,6 +575,17 @@ if __name__ == '__main__':
         fallbacks=[CommandHandler('cancel', cancel)]
     )
 
+    admins_handler = ConversationHandler(
+        entry_points=[CommandHandler('admins', start_org_adm)],
+        states={
+            MAKE_IMAGE: [CallbackQueryHandler(more_yellow_inline, pattern=str(STEP_YELLOW)),
+                         CallbackQueryHandler(red_inline, pattern=str(STEP_RED)),
+                         CallbackQueryHandler(light_done, pattern=str(STEP_DONE)),
+                         CallbackQueryHandler(query_cancel, pattern='stop')],
+        },
+        fallbacks=[CommandHandler('cancel', query_cancel)]
+    )
+
     application.add_handler(start_handler)
     application.add_handler(image_handler)
     application.add_handler(info_handler)
@@ -553,5 +594,6 @@ if __name__ == '__main__':
     application.add_handler(end_text_handler)
     application.add_handler(hashtag_handler)
     application.add_handler(join_handler)
+    application.add_handler(admins_handler)
 
     application.run_polling()

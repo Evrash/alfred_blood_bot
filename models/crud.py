@@ -10,9 +10,9 @@ from sqlalchemy.orm import selectinload
 # import asyncio
 
 
-async def create_user(tg_id: int) -> User:
+async def create_user(tg_id: int, full_name: str|None = None, username: str|None = None) -> User:
     async with db_helper.session_factory() as conn:
-        user = User(tg_id=tg_id)
+        user = User(tg_id=tg_id, full_name=full_name, username=username)
         conn.add(user)
         await conn.commit()
         print(user)
@@ -21,16 +21,17 @@ async def create_user(tg_id: int) -> User:
 async def get_user(tg_id: int) -> User | None:
     async with db_helper.session_factory() as conn:
         # result = await conn.get(User, tg_id)
-        stmt = select(User).where(User.tg_id==tg_id)
+        stmt = select(User).options(selectinload(User.organisation)).where(User.tg_id==tg_id)
+        print(stmt)
         result = await conn.execute(stmt)
         if result:
             return result.scalar()
         return None
 
-async def get_or_create(tg_id: int) -> User:
+async def get_or_create(tg_id: int, full_name: str|None = None, username: str|None = None) -> User:
     result = await get_user(tg_id)
     if not result:
-        return await create_user(tg_id)
+        return await create_user(tg_id, full_name, username)
     return result
 
 async def get_org_by_tg_id(tg_id: int) -> Organisation | None:
@@ -93,7 +94,7 @@ async def user_set_org(user: User):
     async with (db_helper.session_factory() as conn):
         stmt = (
             update(User)
-            .values(organisation_id = user.organisation.id, is_admin=user.is_admin)
+            .values(organisation_id = user.organisation_id, is_admin=user.is_admin)
             .filter_by(id=user.id)
         )
         print(stmt)
