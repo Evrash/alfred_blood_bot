@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 STEP_YELLOW, STEP_RED, STEP_DONE, MAKE_IMAGE, STEP_PASSWORD = range(5)
 VK_GROUP_URL, VK_TOKEN, YD_URL, YD_PASS, YD_LOGIN, STEP_CHOICE, ORG_NAME, SET_TIME, SET_HASHTAG, SET_TEXT, SET_END_TEXT, ORG_RENAME = range(10,22)
 JOIN_TO_ORG, JOIN_PASSWORD = range(30,32)
+SELECT_USER = 40
 END = ConversationHandler.END
 
 def get_keyboard(step_in: int, step_out: int, bt_text: str):
@@ -320,7 +321,6 @@ async def set_vk_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(ts.SET_INFO_VK_GROUP)
         return VK_GROUP_URL
 
-
 async def set_vk_group_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     vk_token = update.message.text.strip()
     result = await get_vk_group_id(token=decode_str(context.user_data['org'].vk_token), group_link=update.message.text)
@@ -498,11 +498,31 @@ async def start_org_adm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     for org_user in org_users:
         if org_user.tg_id == user.tg_id:
             continue
-        keyboard.append([InlineKeyboardButton(f'{org_user.full_name} {org_user.username}', callback_data=f'{org_user.id}')])
+        keyboard.append([InlineKeyboardButton(f'{org_user.full_name} {org_user.username}', callback_data=f'{org_user.id}__0')])
     keyboard.append([InlineKeyboardButton(f'Отмена', callback_data='stop')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(ts.SET_ADMIN_EXPL, reply_markup=reply_markup)
-    return MAKE_IMAGE
+    return SELECT_USER
+
+async def set_org_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Отображение выбранного пользователя и действия с ни"""
+    query = update.callback_query
+    user_id, switch_state = query.data.split('__')
+    await query.answer()
+    user = await crud.get_user_by_id(id=int(user_id))
+    if switch_state:
+        user.is_admin = not user.is_admin
+        await crud.user_set_admin(user)
+    if user.is_admin:
+        msg = f'Выбран {user.full_name}. Он администратор'
+        keyboard = [[InlineKeyboardButton(f'Убрать из администраторов', callback_data=f'{user_id}__1')]]
+    else:
+        msg = f'Выбран {user.full_name}. Он НЕ администратор'
+        keyboard = [[InlineKeyboardButton(f'Сделать администратором', callback_data=f'{user_id}__1')]]
+    keyboard.append([InlineKeyboardButton(f'Отмена', callback_data='stop')])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.edit_message_text(text=msg, reply_markup=reply_markup)
+    return SELECT_USER
 
 if __name__ == '__main__':
     application = ApplicationBuilder().token(settings.token).build()
@@ -578,9 +598,7 @@ if __name__ == '__main__':
     admins_handler = ConversationHandler(
         entry_points=[CommandHandler('admins', start_org_adm)],
         states={
-            MAKE_IMAGE: [CallbackQueryHandler(more_yellow_inline, pattern=str(STEP_YELLOW)),
-                         CallbackQueryHandler(red_inline, pattern=str(STEP_RED)),
-                         CallbackQueryHandler(light_done, pattern=str(STEP_DONE)),
+            SELECT_USER: [CallbackQueryHandler(set_org_admin, pattern='^[0-9]'),
                          CallbackQueryHandler(query_cancel, pattern='stop')],
         },
         fallbacks=[CommandHandler('cancel', query_cancel)]

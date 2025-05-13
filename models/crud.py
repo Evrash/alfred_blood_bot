@@ -28,6 +28,14 @@ async def get_user(tg_id: int) -> User | None:
             return result.scalar()
         return None
 
+async def get_user_by_id(id: int) -> User | None:
+    async with db_helper.session_factory() as conn:
+        stmt = select(User).where(User.id == id)
+        result = await conn.execute(stmt)
+        if result:
+            return result.scalar()
+        return None
+
 async def get_or_create(tg_id: int, full_name: str|None = None, username: str|None = None) -> User:
     result = await get_user(tg_id)
     if not result:
@@ -95,6 +103,17 @@ async def user_set_org(user: User):
         stmt = (
             update(User)
             .values(organisation_id = user.organisation_id, is_admin=user.is_admin)
+            .filter_by(id=user.id)
+        )
+        print(stmt)
+        await conn.execute(stmt)
+        await conn.commit()
+
+async def user_set_admin(user: User):
+    async with (db_helper.session_factory() as conn):
+        stmt = (
+            update(User)
+            .values(is_admin = user.is_admin)
             .filter_by(id=user.id)
         )
         print(stmt)
