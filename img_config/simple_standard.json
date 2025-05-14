@@ -1,0 +1,108 @@
+{
+    "name": "simple_standard",
+    "dir": "4",
+    "size": [
+        565,
+        450
+    ],
+    "elements": {
+        "back": [
+            "back.jpg"
+        ],
+        "main": {
+            "box": {
+                "o_plus": {
+                    "position": {
+                        "x": 20,
+                        "y": 90
+                    },
+                    "image": {
+                        "red": "red_plus.png",
+                        "green": "green_plus.png",
+                        "yellow": "yellow_plus.png"
+                    }
+                },
+                "o_minus": {
+                    "position": {
+                        "x": 154,
+                        "y": 90
+                    },
+                    "image": {
+                        "red": "red_minus.png",
+                        "green": "green_minus.png",
+                        "yellow": "yellow_minus.png"
+                    }
+                },
+                "a_plus": {
+                    "position": {
+                        "x": 288,
+                        "y": 90
+                    },
+                    "image": {
+                        "red": "red_plus.png",
+                        "green": "green_plus.png",
+                        "yellow": "yellow_plus.png"
+                    }
+                },
+                "a_minus": {
+                    "position": {
+                        "x": 422,
+                        "y": 90
+                    },
+                    "image": {
+                        "red": "red_minus.png",
+                        "green": "green_minus.png",
+                        "yellow": "yellow_minus.png"
+                    }
+                },
+                "b_plus": {
+                    "position": {
+                        "x": 20,
+                        "y": 240
+                    },
+                    "image": {
+                        "red": "red_plus.png",
+                        "green": "green_plus.png",
+                        "yellow": "yellow_plus.png"
+                    }
+                },
+                "b_minus": {
+                    "position": {
+                        "x": 154,
+                        "y": 240
+                    },
+                    "image": {
+                        "red": "red_minus.png",
+                        "green": "green_minus.png",
+                        "yellow": "yellow_minus.png"
+                    }
+                },
+                "ab_plus": {
+                    "position": {
+                        "x": 288,
+                        "y": 240
+                    },
+                    "image": {
+                        "red": "red_plus.png",
+                        "green": "green_plus.png",
+                        "yellow": "yellow_plus.png"
+                    }
+                },
+                "ab_minus": {
+                    "position": {
+                        "x": 422,
+                        "y": 240
+                    },
+                    "image": {
+                        "red": "red_minus.png",
+                        "green": "green_minus.png",
+                        "yellow": "yellow_minus.png"
+                    }
+                }
+            }
+        },
+        "additional": {
+
+        }
+    }
+}
