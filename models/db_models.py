@@ -28,6 +28,7 @@ class Organisation(Base):
     vk_last_pub_date: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     vk_last_post_id: Mapped[int] = mapped_column(Integer, nullable=True)
     vk_is_pin_image: Mapped[bool] = mapped_column(Boolean, default=True)
+    vk_is_delete_prev_post: Mapped[bool] = mapped_column(Boolean, default=0, server_default='1')
     vk_template: Mapped[str] = mapped_column(String, nullable=True)
     yd_login: Mapped[str] = mapped_column(String, nullable=True)
     yd_pass: Mapped[str] = mapped_column(String, nullable=True)

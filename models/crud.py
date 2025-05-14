@@ -1,13 +1,9 @@
 import datetime
 
-from more_itertools.more import with_iter
 from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
-# from sqlalchemy.orm.sync import update
 
 from models import User, db_helper, Organisation
 from sqlalchemy.orm import selectinload
-# import asyncio
 
 
 async def create_user(tg_id: int, full_name: str|None = None, username: str|None = None) -> User:
@@ -15,14 +11,12 @@ async def create_user(tg_id: int, full_name: str|None = None, username: str|None
         user = User(tg_id=tg_id, full_name=full_name, username=username)
         conn.add(user)
         await conn.commit()
-        print(user)
         return user
 
 async def get_user(tg_id: int) -> User | None:
     async with db_helper.session_factory() as conn:
         # result = await conn.get(User, tg_id)
         stmt = select(User).options(selectinload(User.organisation)).where(User.tg_id==tg_id)
-        print(stmt)
         result = await conn.execute(stmt)
         if result:
             return result.scalar()
@@ -84,7 +78,6 @@ async def get_organisation_by_name(name: str) -> Organisation | None:
 
 async def get_all_orgs() -> list[Organisation] | None:
     async with db_helper.session_factory() as conn:
-        # result = await conn.get(User, tg_id)
         stmt = select(Organisation)
         result = await conn.execute(stmt)
         if result:
@@ -105,7 +98,6 @@ async def user_set_org(user: User):
             .values(organisation_id = user.organisation_id, is_admin=user.is_admin)
             .filter_by(id=user.id)
         )
-        print(stmt)
         await conn.execute(stmt)
         await conn.commit()
 
@@ -116,7 +108,6 @@ async def user_set_admin(user: User):
             .values(is_admin = user.is_admin)
             .filter_by(id=user.id)
         )
-        print(stmt)
         await conn.execute(stmt)
         await conn.commit()
 
@@ -127,7 +118,6 @@ async def org_set_token(org: Organisation):
             .values(vk_token = org.vk_token)
             .filter_by(id=org.id)
         )
-        print(stmt)
         await conn.execute(stmt)
         await conn.commit()
 
@@ -138,7 +128,6 @@ async def org_set_password(org: Organisation):
             .values(join_password = org.join_password)
             .filter_by(id=org.id)
         )
-        print(stmt)
         await conn.execute(stmt)
         await conn.commit()
 
@@ -149,7 +138,6 @@ async def org_set_name(org: Organisation):
             .values(name = org.name)
             .filter_by(id=org.id)
         )
-        print(stmt)
         await conn.execute(stmt)
         await conn.commit()
 
@@ -160,7 +148,6 @@ async def org_set_vk_group_id(org: Organisation):
             .values(vk_group_id = org.vk_group_id)
             .filter_by(id=org.id)
         )
-        print(stmt)
         await conn.execute(stmt)
         await conn.commit()
 
@@ -173,7 +160,6 @@ async def set_yd_all(org: Organisation):
                     yd_groups_ids = org.yd_groups_ids)
             .filter_by(id=org.id)
         )
-        print(stmt)
         await conn.execute(stmt)
         await conn.commit()
 
@@ -184,7 +170,6 @@ async def set_organisation_yd_str(org: Organisation):
             .values(last_yd_str = org.last_yd_str)
             .filter_by(id=org.id)
         )
-        print(stmt)
         await conn.execute(stmt)
         await conn.commit()
 
@@ -195,7 +180,6 @@ async def set_yd_last_pub_date(org: Organisation):
             .values(yd_last_pub_date = datetime.datetime.now())
             .filter_by(id=org.id)
         )
-        print(stmt)
         await conn.execute(stmt)
         await conn.commit()
 
@@ -206,7 +190,6 @@ async def set_vk_last_light_post(org: Organisation):
             .values(vk_last_light_post = org.vk_last_light_post)
             .filter_by(id=org.id)
         )
-        print(stmt)
         await conn.execute(stmt)
         await conn.commit()
 
@@ -219,7 +202,6 @@ async def set_last_light_post_info(org: Organisation):
                     last_image_name = org.last_image_name)
             .filter_by(id=org.id)
         )
-        print(stmt)
         await conn.execute(stmt)
         await conn.commit()
 
@@ -230,7 +212,6 @@ async def set_vk_last_post_id(org: Organisation):
             .values(vk_last_post_id = org.vk_last_post_id, vk_last_pub_date = org.vk_last_pub_date)
             .filter_by(id=org.id)
         )
-        print(stmt)
         await conn.execute(stmt)
         await conn.commit()
 
@@ -250,7 +231,25 @@ async def set_org_text(org: Organisation, start: bool | None = None, end: bool |
                 .values(end_text = org.end_text)
                 .filter_by(id=org.id)
             )
-        print(stmt)
+        await conn.execute(stmt)
+        await conn.commit()
+
+async def set_org_settings(org: Organisation, vk_pin: bool | None = None, vk_del: bool | None = None):
+    if not vk_pin and not vk_del:
+        return None
+    async with (db_helper.session_factory() as conn):
+        if vk_pin:
+            stmt = (
+                update(Organisation)
+                .values(vk_is_pin_image = org.vk_is_pin_image)
+                .filter_by(id=org.id)
+            )
+        if vk_del:
+            stmt = (
+                update(Organisation)
+                .values(vk_is_delete_prev_post = org.vk_is_delete_prev_post)
+                .filter_by(id=org.id)
+            )
         await conn.execute(stmt)
         await conn.commit()
 
@@ -261,28 +260,5 @@ async def set_hashtag(org: Organisation):
             .values(hashtag = org.hashtag)
             .filter_by(id=org.id)
         )
-        print(stmt)
         await conn.execute(stmt)
         await conn.commit()
-
-# async def update_user(user: User):
-
-# async def get_user_org(tg_id: int) -> Organisation:
-#     async with db_helper.session_factory() as conn:
-#         stmt = select(Organisation).options(selectinload(User.tg_id))
-
-# async def main():
-#     user: User = await get_user(tg_id=154276194)
-#     org: Organisation = await get_organisation_by_name(name='Test')
-#     user.organisation_id = org.id
-#     print(user.organisation_id)
-#
-# asyncio.run(main())
-#
-# async def main():
-#     org = await get_org_by_tg_id(154276194)
-#     # for user in org.users:
-#     #     print(user)
-#     print(org.id, org.name)
-# #
-# asyncio.run(main())

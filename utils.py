@@ -19,6 +19,13 @@ def decode_str(string):
 
 
 async def yd_ids(url: str, login: str, password: str):
+    """
+    Получение списка Id групп, Id станции, флага успешной авторизации
+    :param url: адрес страницы со светофором
+    :param login: логин YD
+    :param password: пароль YD
+    :return: (список групп, Id станции, флаг пользователя)
+    """
     async with httpx.AsyncClient() as client:
         response = await client.post('https://adm.yadonor.ru/index.php?obj=BLOOD_STATIONS', data={'login': login, 'password': password})
            # TODO: добавить проверку ту ли ссылку нам пихнули
@@ -35,33 +42,19 @@ async def yd_ids(url: str, login: str, password: str):
             if param.split('=')[0] == 'BLOOD_RESERVE_ID':
                 n_first = int(param.split('=')[1])
                 groups = [str(x) for x in range(n_first, n_first + 8)]
-        # response = await client.get(url)
-        # print(response.text)
-        # soup = BeautifulSoup(response.text, 'html.parser')
-        # soup = soup.find_all(attrs={'name': re.compile('reserv')})
-        # groups = []
-        # for block in soup:
-        #     if block.get('name')[7:10] not in groups:
-        #         groups.append(block.get('name')[7:10])
-        # print(groups)
-        # ready_groups = [groups[0], groups[4], groups[1], groups[5], groups[2], groups[6], groups[3], groups[7]]
         print(groups, station_id, is_user)
         return groups, station_id, is_user
 
 
-def sorted_string(line: str) -> str:
-    group_list = line.strip().split(',')
-    group_list.sort()
-    return ', '.join(group_list)
-
-
 def make_message(light: dict[str:str], start_text: str=None, end_text: str = None, hashtag:str = None):
-    def get_text_from_groups(groups: list):
-        if groups:
-            return ', '.join(settings.group.__getattribute__(x) for x in groups)
-        return ''
-
-
+    """
+    Формирование сообщение для светофора
+    :param light: Шаблон готового светофора
+    :param start_text: Начальный текст
+    :param end_text: Конечный текст
+    :param hashtag: Хэштеги
+    :return: Строка с готовым текстом для светофора
+    """
     message_str = ''
     if not any(x in light.values() for x in ['yellow', 'red']):
         message_str = 'Уважаемые доноры, сегодня: \nВсех групп достаточно!'
@@ -97,6 +90,12 @@ def make_message(light: dict[str:str], start_text: str=None, end_text: str = Non
 
 
 async def get_vk_group_id(token:str, group_link: str):
+    """
+    Получение ID группы в ВК с помощью vkbottle
+    :param token: ВК токен
+    :param group_link: Ссылка на группу
+    :return: Словарь содержащий либо группу, либо ошибку
+    """
     group_name = group_link.split('/')[-1]
     api = API(token)
     try:
@@ -112,6 +111,15 @@ async def get_vk_group_id(token:str, group_link: str):
 
 
 async def publish_to_yd(login, password, station_id, group_ids, group_vals):
+    """
+    Публикация светофора на YD
+    :param login: Логин пользователя
+    :param password: Пароль пользователя
+    :param station_id: ID станции
+    :param group_ids: Список ID групп
+    :param group_vals: Список значений групп
+    :return: None
+    """
     groups = ['reserv[' + x + ']' for x in group_ids.split(',')]
     blood_reserve_id = group_ids.split(',')[0]
     vals = group_vals.split(',')
@@ -127,10 +135,21 @@ async def publish_to_yd(login, password, station_id, group_ids, group_vals):
         print(r.request)
 
 async def publish_to_vk(vk_token: str, org_dir: str, image_name: str, group_id: int, text: str, is_pin: bool =True,
-                        prev_post_id: int=None):
+                        prev_post_id: int=None, is_del_post: bool=True):
+    """
+    Публикация светофора и сообщения в VK
+    :param vk_token: Токен ВК
+    :param org_dir: Директория расположения картинки
+    :param image_name: Имя файла картинки
+    :param group_id: ID группы в ВК
+    :param text: Текст сообщения
+    :param is_pin: Флаг необходимости закрепления светофора на стене
+    :param prev_post_id: ID предыдущего поста для удаления
+    :return:
+    """
     api = API(vk_token)
     try:
-        if prev_post_id:
+        if prev_post_id and is_del_post:
             await api.wall.delete(owner_id=-group_id, post_id=prev_post_id)
         photo_uploader = PhotoWallUploader(api)
         img_path = config.BASE_DIR / 'img' / org_dir / image_name
@@ -147,20 +166,3 @@ async def publish_to_vk(vk_token: str, org_dir: str, image_name: str, group_id: 
         return {'error_msg': f'Неизвестная ошибка: error:{e.error_msg}, code:{e.code}'}
     else:
         return {'post_id': post_response.post_id}
-
-
-
-# async def main():
-#     res = await get_vk_group_id()
-#     print(res)
-#     if 'error_msg' in res:
-#         print(True)
-#
-# asyncio.run(main())
-
-# light_template = {'o_plus': 'red', 'o_minus':'green',
-#                   'a_plus': 'yellow', 'a_minus':'red',
-#                   'b_plus': 'green', 'b_minus':'yellow',
-#                   'ab_plus': 'green', 'ab_minus':'red'}
-#
-# print(make_message(light=light_template))
