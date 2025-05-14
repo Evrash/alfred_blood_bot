@@ -278,7 +278,6 @@ async def get_yd_pass(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_yd_url(update, context):
     context.user_data['org'].yd_pass = encode_str(update.message.text)
-    # TODO: Додавить картинку с копированием УРЛа
     message = ts.SET_INFO_YD_URL
     await update.message.reply_text(message)
     await context.bot.send_document(chat_id=update.effective_chat.id, document=open('bot_img/yd_site.jpg', 'rb'))
@@ -498,7 +497,11 @@ async def start_org_adm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     for org_user in org_users:
         if org_user.tg_id == user.tg_id:
             continue
-        keyboard.append([InlineKeyboardButton(f'{org_user.full_name} {org_user.username}', callback_data=f'{org_user.id}__0')])
+        if org_user.username:
+            username = f'{org_user.full_name} {org_user.username}'
+        else:
+            username = f'{org_user.full_name}'
+        keyboard.append([InlineKeyboardButton(username, callback_data=f'{org_user.id}__0')])
     keyboard.append([InlineKeyboardButton(f'Отмена', callback_data='stop')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(ts.SET_ADMIN_EXPL, reply_markup=reply_markup)
