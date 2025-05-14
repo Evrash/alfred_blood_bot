@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 STEP_YELLOW, STEP_RED, STEP_DONE, MAKE_IMAGE, STEP_PASSWORD = range(5)
 VK_GROUP_URL, VK_TOKEN, YD_URL, YD_PASS, YD_LOGIN, STEP_CHOICE, ORG_NAME, SET_TIME, SET_HASHTAG, SET_TEXT, SET_END_TEXT, ORG_RENAME = range(10,22)
 JOIN_TO_ORG, JOIN_PASSWORD = range(30,32)
-SELECT_USER = 40
+SELECT_USER, SET_ORG_SETTINGS = range(40,42)
 END = ConversationHandler.END
 
 def get_keyboard(step_in: int, step_out: int, bt_text: str):
@@ -367,7 +367,7 @@ async def publish_everywhere(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 post_id = await publish_to_vk(vk_token=decode_str(org.vk_token), org_dir=f'org{str(org.id)}',
                                               group_id=org.vk_group_id, is_pin=org.vk_is_pin_image,
                                               prev_post_id=org.vk_last_post_id, text=org.vk_last_light_post,
-                                              image_name=org.last_image_name)
+                                              image_name=org.last_image_name, is_del_post=org.vk_is_delete_prev_post)
                 if 'post_id' in post_id:
                     org.vk_last_post_id = post_id['post_id']
                     org.vk_last_pub_date = datetime.now()
@@ -527,6 +527,49 @@ async def set_org_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.edit_message_text(text=msg, reply_markup=reply_markup)
     return SELECT_USER
 
+# Функции назначения администратора
+async def start_org_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Устновка значений закрепленеия светофора и удаления предыдущего"""
+    if update.callback_query:
+        query = update.callback_query
+        await query.answer()
+        if '__' in query.data:
+            param, switch_state = query.data.split('__')
+            org = await crud.get_org_by_tg_id(tg_id=update.effective_user.id)
+            if param == '0':
+                org.vk_is_pin_image = not org.vk_is_pin_image
+                await crud.set_org_settings(org=org, vk_pin=True)
+            else:
+                org.vk_is_delete_prev_post = not org.vk_is_delete_prev_post
+                await crud.set_org_settings(org=org, vk_del=True)
+
+    user = await crud.get_user(update.effective_user.id)
+    if not user.is_admin or not user.organisation_id:
+        await update.message.reply_text(ts.ADMIN_REQ)
+        return ConversationHandler.END
+    org = await crud.get_org_by_tg_id(tg_id=update.effective_user.id)
+    keyboard = []
+    msg = 'Сейчас настройки публикации следующие:\n'
+    if org.vk_is_pin_image:
+        msg += 'Светофор закрепляется на стене\n'
+        keyboard.append([InlineKeyboardButton('Не закреплять', callback_data='0__0')])
+    else:
+        msg += 'Светофор НЕ закраепляется на стене\n'
+        keyboard.append([InlineKeyboardButton('Закреплять', callback_data='0__1')])
+    if org.vk_is_delete_prev_post:
+        msg += 'Пост с предыдущем светофор удаляется со стены\n'
+        keyboard.append([InlineKeyboardButton('Не удалять', callback_data='1__0')])
+    else:
+        msg += 'Пост с предыдущем светофором НЕ удаляется со стены\n'
+        keyboard.append([InlineKeyboardButton('Удалять', callback_data='1__1')])
+    keyboard.append([InlineKeyboardButton(f'Отмена', callback_data='stop')])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    if update.callback_query:
+        await update.callback_query.edit_message_text(text=msg, reply_markup=reply_markup)
+    else:
+        await update.message.reply_text(text=msg, reply_markup=reply_markup)
+    return SET_ORG_SETTINGS
+
 if __name__ == '__main__':
     application = ApplicationBuilder().token(settings.token).build()
     start_handler = CommandHandler('start', start)
@@ -606,6 +649,14 @@ if __name__ == '__main__':
         },
         fallbacks=[CommandHandler('cancel', query_cancel)]
     )
+    org_settings_handler = ConversationHandler(
+        entry_points=[CommandHandler('settings', start_org_settings)],
+        states={
+            SET_ORG_SETTINGS: [CallbackQueryHandler(start_org_settings, pattern='^[0-9]'),
+                          CallbackQueryHandler(query_cancel, pattern='stop')],
+        },
+        fallbacks=[CommandHandler('cancel', query_cancel)]
+    )
 
     application.add_handler(start_handler)
     application.add_handler(image_handler)
@@ -616,5 +667,6 @@ if __name__ == '__main__':
     application.add_handler(hashtag_handler)
     application.add_handler(join_handler)
     application.add_handler(admins_handler)
+    application.add_handler(org_settings_handler)
 
     application.run_polling()
