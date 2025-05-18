@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     )
     base_dir:Path = BASE_DIR
     token: str = ''
-    default_img_template: str = 'color_drops'
+    default_img_template: str = 'simple_standard'
     group: BloodGroups = BloodGroups()
     db: DbSettings = DbSettings()
 

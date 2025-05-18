@@ -1,4 +1,6 @@
 import logging
+import os
+from shutil import rmtree
 from typing import TYPE_CHECKING
 
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
@@ -569,6 +571,43 @@ async def start_org_settings(update: Update, context: ContextTypes.DEFAULT_TYPE)
     else:
         await update.message.reply_text(text=msg, reply_markup=reply_markup)
     return SET_ORG_SETTINGS
+
+#Функции выбора светофора
+async def generate_samples(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    templates = os.listdir(settings.base_dir / 'img_templates')
+    light_template = {'o_plus': 'red', 'o_minus': 'green',
+                      'a_plus': 'yellow', 'a_minus': 'red',
+                      'b_plus': 'green', 'b_minus': 'yellow',
+                      'ab_plus': 'green', 'ab_minus': 'red'}
+    for sample in os.listdir(settings.base_dir / 'img' / 'samples'):
+        os.remove(settings.base_dir / 'img' / 'samples' / f'{sample}')
+    for template in templates:
+        img_template = template.split('.')[0]
+        image = LightImage(img_template, light_template, 'samples')
+        image.draw_image()
+        await update.message.reply_text(ts.SET_LIGHT_INFO)
+        await update.message.reply_document(document=open(image.image_name, 'rb'))
+        await update.message.reply_text(f'{img_template}')
+        if org:
+            msg = make_message(light=light_template, start_text=org.start_text, end_text=org.end_text,
+                               hashtag=org.hashtag)
+            msg_author = f"Светофор сформирован {update.callback_query.from_user.full_name}"
+            if update.callback_query.from_user.username:
+                msg_author += ' @' + update.callback_query.from_user.username
+            org.vk_last_light_post = msg
+            org.last_create_date = datetime.now()
+            org.last_image_name = image.image_name.name
+            await crud.set_last_light_post_info(org)
+            org_users = await crud.get_org_users(org.id)
+            for user in org_users:
+                await context.bot.send_message(chat_id=user.tg_id, text=msg)
+                await context.bot.send_document(chat_id=user.tg_id, document=open(image.image_name, 'rb'))
+                await context.bot.send_message(chat_id=user.tg_id, text=msg_author)
+        else:
+            msg = make_message(light=light_template)
+            await context.bot.send_message(chat_id=user.tg_id, text=msg)
+            await context.bot.send_document(chat_id=user.tg_id, document=open(image.image_name, 'rb'))
+        return END
 
 if __name__ == '__main__':
     application = ApplicationBuilder().token(settings.token).build()
