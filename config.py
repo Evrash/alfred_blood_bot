@@ -38,5 +38,6 @@ class Settings(BaseSettings):
     default_img_template: str = 'simple_standard'
     group: BloodGroups = BloodGroups()
     db: DbSettings = DbSettings()
+    super_admins: list = []
 
 settings = Settings()

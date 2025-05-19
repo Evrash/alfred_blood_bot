@@ -574,6 +574,9 @@ async def start_org_settings(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 #Функции выбора светофора
 async def generate_samples(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.effective_user.id not in settings.super_admins:
+        await update.message.reply_text(ts.SUPER_ADMIN_REQ)
+        return ConversationHandler.END
     templates = os.listdir(settings.base_dir / 'img_templates')
     light_template = {'o_plus': 'red', 'o_minus': 'green',
                       'a_plus': 'yellow', 'a_minus': 'red',
@@ -585,28 +588,9 @@ async def generate_samples(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         img_template = template.split('.')[0]
         image = LightImage(img_template, light_template, 'samples')
         image.draw_image()
-        await update.message.reply_text(ts.SET_LIGHT_INFO)
+        await update.message.reply_text(ts.GEN_LIGHT_INFO)
         await update.message.reply_document(document=open(image.image_name, 'rb'))
         await update.message.reply_text(f'{img_template}')
-        if org:
-            msg = make_message(light=light_template, start_text=org.start_text, end_text=org.end_text,
-                               hashtag=org.hashtag)
-            msg_author = f"Светофор сформирован {update.callback_query.from_user.full_name}"
-            if update.callback_query.from_user.username:
-                msg_author += ' @' + update.callback_query.from_user.username
-            org.vk_last_light_post = msg
-            org.last_create_date = datetime.now()
-            org.last_image_name = image.image_name.name
-            await crud.set_last_light_post_info(org)
-            org_users = await crud.get_org_users(org.id)
-            for user in org_users:
-                await context.bot.send_message(chat_id=user.tg_id, text=msg)
-                await context.bot.send_document(chat_id=user.tg_id, document=open(image.image_name, 'rb'))
-                await context.bot.send_message(chat_id=user.tg_id, text=msg_author)
-        else:
-            msg = make_message(light=light_template)
-            await context.bot.send_message(chat_id=user.tg_id, text=msg)
-            await context.bot.send_document(chat_id=user.tg_id, document=open(image.image_name, 'rb'))
         return END
 
 if __name__ == '__main__':
@@ -688,6 +672,7 @@ if __name__ == '__main__':
         },
         fallbacks=[CommandHandler('cancel', query_cancel)]
     )
+
     org_settings_handler = ConversationHandler(
         entry_points=[CommandHandler('settings', start_org_settings)],
         states={
@@ -696,6 +681,8 @@ if __name__ == '__main__':
         },
         fallbacks=[CommandHandler('cancel', query_cancel)]
     )
+
+    gen_img_handler = CommandHandler('gen', generate_samples)
 
     application.add_handler(start_handler)
     application.add_handler(image_handler)
@@ -707,5 +694,6 @@ if __name__ == '__main__':
     application.add_handler(join_handler)
     application.add_handler(admins_handler)
     application.add_handler(org_settings_handler)
+    application.add_handler(gen_img_handler)
 
     application.run_polling()
