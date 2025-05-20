@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 STEP_YELLOW, STEP_RED, STEP_DONE, MAKE_IMAGE, STEP_PASSWORD = range(5)
 VK_GROUP_URL, VK_TOKEN, YD_URL, YD_PASS, YD_LOGIN, STEP_CHOICE, ORG_NAME, SET_TIME, SET_HASHTAG, SET_TEXT, SET_END_TEXT, ORG_RENAME = range(10,22)
 JOIN_TO_ORG, JOIN_PASSWORD = range(30,32)
-SELECT_USER, SET_ORG_SETTINGS = range(40,42)
+SELECT_USER, SET_ORG_SETTINGS, SET_ORG_LIGHT = range(40,43)
 END = ConversationHandler.END
 
 def get_keyboard(step_in: int, step_out: int, bt_text: str):
@@ -589,8 +589,8 @@ async def generate_samples(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         img_template = template.split('.')[0]
         image = LightImage(img_template, light_template, 'samples')
         image.draw_image()
-        await update.message.reply_document(document=open(image.image_name, 'rb'))
-        await update.message.reply_text(f'{img_template}')
+        await update.message.reply_document(document=open(image.image_name, 'rb'), caption=f'{img_template}')
+        # await update.message.reply_text(f'{img_template}')
     await update.message.reply_text(ts.GEN_LIGHT_DONE)
     return END
 
@@ -606,13 +606,26 @@ async def start_set_light(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     await update.message.reply_text(ts.SET_LIGHT_CHOOSE)
     for sample in os.listdir(settings.base_dir / 'img' / 'samples'):
         light_template = sample.split('.')[0].split('-')[-1]
-        await update.message.reply_document(document=open(settings.base_dir / 'img' / 'samples' / sample, 'rb'))
-        await update.message.reply_text(f'{light_template}')
+        await update.message.reply_document(document=open(settings.base_dir / 'img' / 'samples' / sample, 'rb'),
+                                            caption=f'{light_template}')
+        # await update.message.reply_text(f'{light_template}')
         keyboard.append([InlineKeyboardButton(light_template, callback_data=f'0__{light_template}')])
     keyboard.append([InlineKeyboardButton(f'Отмена', callback_data='stop')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(text = ts.SET_LIGHT_ASK, reply_markup=reply_markup)
-    return SELECT_USER
+    return SET_ORG_LIGHT
+
+async def set_org_light(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Отображение выбранного пользователя и действия с ни"""
+    query = update.callback_query
+    selected_light = query.data.split('__')[1]
+    await query.answer()
+    org = await crud.get_org_by_tg_id(tg_id=update.callback_query.from_user.id)
+    org.vk_template = selected_light
+    await crud.set_light_template(org=org)
+    msg = f'Светофор установлен. Шаблон {selected_light}'
+    await update.callback_query.edit_message_text(text=msg)
+    return ConversationHandler.END
 
 if __name__ == '__main__':
     application = ApplicationBuilder().token(settings.token).build()
@@ -708,7 +721,7 @@ if __name__ == '__main__':
     light_settings_handler = ConversationHandler(
         entry_points=[CommandHandler('light', start_set_light)],
         states={
-            SELECT_USER: [CallbackQueryHandler(set_org_admin, pattern='^[0-9]'),
+            SET_ORG_LIGHT: [CallbackQueryHandler(set_org_light, pattern='^[0-9]'),
                           CallbackQueryHandler(query_cancel, pattern='stop')],
         },
         fallbacks=[CommandHandler('cancel', query_cancel)]

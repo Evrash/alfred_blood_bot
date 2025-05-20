@@ -262,3 +262,13 @@ async def set_hashtag(org: Organisation):
         )
         await conn.execute(stmt)
         await conn.commit()
+
+async def set_light_template(org: Organisation):
+    async with (db_helper.session_factory() as conn):
+        stmt = (
+            update(Organisation)
+            .values(vk_template = org.vk_template)
+            .filter_by(id=org.id)
+        )
+        await conn.execute(stmt)
+        await conn.commit()
