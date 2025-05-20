@@ -3,19 +3,33 @@ import re
 from bs4 import BeautifulSoup
 # import asyncio
 import base64
-
+from cryptography.fernet import Fernet
 from vkbottle import API, VKAPIError, PhotoWallUploader
 
 import config
 from config import settings
 
 
+def check_key():
+    key_file = settings.base_dir / '.key'
+    if not key_file.is_file():
+        key = Fernet.generate_key()
+        with open(settings.base_dir / '.key', 'wb+') as f:
+            f.write(key)
+
+
 def encode_str(string):
-    return str(base64.b64encode(string.encode('utf-8')), 'utf-8')
+    key_file = settings.base_dir / '.key'
+    key = key_file.read_bytes()
+    cipher = Fernet(key)
+    return cipher.encrypt(string.encode('utf-8'))
 
 
 def decode_str(string):
-    return base64.b64decode(string).decode('utf-8')
+    key_file = settings.base_dir / '.key'
+    key = key_file.read_bytes()
+    cipher = Fernet(key)
+    return cipher.decrypt(string).decode('utf-8')
 
 
 async def yd_ids(url: str, login: str, password: str):
