@@ -16,7 +16,8 @@ dependencies = [
     "sqlalchemy[asyncio] (>=2.0.39,<3.0.0)",
     "aiosqlite (>=0.21.0,<0.22.0)",
     "beautifulsoup4 (>=4.13.3,<5.0.0)",
-    "vkbottle (>=4.4.5,<5.0.0)"
+    "vkbottle (>=4.4.5,<5.0.0)",
+    "cryptography (>=45.0.2,<46.0.0)"
 ]
 
 
