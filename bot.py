@@ -572,26 +572,47 @@ async def start_org_settings(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_text(text=msg, reply_markup=reply_markup)
     return SET_ORG_SETTINGS
 
-#Функции выбора светофора
+#Функция генерации светофора
 async def generate_samples(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.effective_user.id not in settings.super_admins:
         await update.message.reply_text(ts.SUPER_ADMIN_REQ)
         return ConversationHandler.END
-    templates = os.listdir(settings.base_dir / 'img_templates')
+    templates = os.listdir(settings.base_dir / 'img_config')
     light_template = {'o_plus': 'red', 'o_minus': 'green',
                       'a_plus': 'yellow', 'a_minus': 'red',
                       'b_plus': 'green', 'b_minus': 'yellow',
                       'ab_plus': 'green', 'ab_minus': 'red'}
     for sample in os.listdir(settings.base_dir / 'img' / 'samples'):
         os.remove(settings.base_dir / 'img' / 'samples' / f'{sample}')
+    await update.message.reply_text(ts.GEN_LIGHT_INFO)
     for template in templates:
         img_template = template.split('.')[0]
         image = LightImage(img_template, light_template, 'samples')
         image.draw_image()
-        await update.message.reply_text(ts.GEN_LIGHT_INFO)
         await update.message.reply_document(document=open(image.image_name, 'rb'))
         await update.message.reply_text(f'{img_template}')
-        return END
+    await update.message.reply_text(ts.GEN_LIGHT_DONE)
+    return END
+
+# Функции выбора светофора
+async def start_set_light(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Старт выбора светофора"""
+    user = await crud.get_user(update.effective_user.id)
+    if not user.is_admin or not user.organisation_id:
+        await update.message.reply_text(ts.ADMIN_REQ)
+        return ConversationHandler.END
+
+    keyboard = []
+    await update.message.reply_text(ts.SET_LIGHT_CHOOSE)
+    for sample in os.listdir(settings.base_dir / 'img' / 'samples'):
+        light_template = sample.split('.')[0].split('-')[-1]
+        await update.message.reply_document(document=open(settings.base_dir / 'img' / 'samples' / sample, 'rb'))
+        await update.message.reply_text(f'{light_template}')
+        keyboard.append([InlineKeyboardButton(light_template, callback_data=f'0__{light_template}')])
+    keyboard.append([InlineKeyboardButton(f'Отмена', callback_data='stop')])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(text = ts.SET_LIGHT_ASK, reply_markup=reply_markup)
+    return SELECT_USER
 
 if __name__ == '__main__':
     application = ApplicationBuilder().token(settings.token).build()
@@ -684,6 +705,15 @@ if __name__ == '__main__':
 
     gen_img_handler = CommandHandler('gen', generate_samples)
 
+    light_settings_handler = ConversationHandler(
+        entry_points=[CommandHandler('light', start_set_light)],
+        states={
+            SELECT_USER: [CallbackQueryHandler(set_org_admin, pattern='^[0-9]'),
+                          CallbackQueryHandler(query_cancel, pattern='stop')],
+        },
+        fallbacks=[CommandHandler('cancel', query_cancel)]
+    )
+
     application.add_handler(start_handler)
     application.add_handler(image_handler)
     application.add_handler(info_handler)
@@ -695,5 +725,6 @@ if __name__ == '__main__':
     application.add_handler(admins_handler)
     application.add_handler(org_settings_handler)
     application.add_handler(gen_img_handler)
+    application.add_handler(light_settings_handler)
 
     application.run_polling()

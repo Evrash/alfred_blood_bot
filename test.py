@@ -5,5 +5,5 @@ light_template = {'o_plus': 'red', 'o_minus':'green',
                   'b_plus': 'green', 'b_minus':'yellow',
                   'ab_plus': 'green', 'ab_minus':'red'}
 
-image = LightImage('color_drops', light_template, 'org1')
+image = LightImage('simple_standard', light_template, 'org1')
 image.draw_image()
