@@ -1,4 +1,5 @@
 import logging
+from logging.handlers import RotatingFileHandler
 import os
 from shutil import rmtree
 from typing import TYPE_CHECKING
@@ -18,12 +19,14 @@ if TYPE_CHECKING:
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    level=logging.INFO, filename=settings.base_dir / 'log.log'
 )
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
+log_handler = RotatingFileHandler(settings.base_dir / 'log.log', maxBytes=5000000, backupCount=10)
+logger.addHandler(log_handler)
 
 STEP_YELLOW, STEP_RED, STEP_DONE, MAKE_IMAGE, STEP_PASSWORD = range(5)
 VK_GROUP_URL, VK_TOKEN, YD_URL, YD_PASS, YD_LOGIN, STEP_CHOICE, ORG_NAME, SET_TIME, SET_HASHTAG, SET_TEXT, SET_END_TEXT, ORG_RENAME = range(10,22)
@@ -31,7 +34,13 @@ JOIN_TO_ORG, JOIN_PASSWORD = range(30,32)
 SELECT_USER, SET_ORG_SETTINGS, SET_ORG_LIGHT = range(40,43)
 END = ConversationHandler.END
 
-def get_keyboard(step_in: int, step_out: int, bt_text: str):
+def get_keyboard(step_in: int, step_out: int, bt_text: str) -> list[list[InlineKeyboardButton]]:
+    """
+    Генерация клавиатуры
+    step_in - шаг на который должно вести нажатие кнопки светофора
+    step_out - щаг на который должно вести нажатие кнопки "Дальше"
+    bt_text - Текст для кнопки step_out
+    """
     keyboard = [
         [
             InlineKeyboardButton(settings.group.o_plus, callback_data=f'{step_in}__o_plus'),
@@ -51,13 +60,14 @@ def get_keyboard(step_in: int, step_out: int, bt_text: str):
     ]
     return keyboard
 
-def get_text_from_groups(groups: list):
+def get_text_from_groups(groups: list) -> str:
     if groups:
         return ', '.join(settings.group.__getattribute__(x) for x in groups)
     return ''
 
 # Старт
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logger.info(f'Пользователь {update.message.from_user.id} ввёл команду /start')
     await crud.get_or_create(tg_id=update.effective_chat.id, full_name=update.effective_user.full_name,
                              username=update.effective_user.username)
     await context.bot.send_message(chat_id=update.effective_chat.id, text=ts.MESSAGE_START)
@@ -65,6 +75,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Функции генерации светофора
 async def start_image_inline(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Старт генерации донорского светофора"""
+    logger.info(f'Пользователь {update.message.from_user.id} ввёл команду /image')
     context.user_data['yellow_list'] = []
     context.user_data['red_list'] = []
     inline_keyboard = get_keyboard(STEP_YELLOW, STEP_RED, ts.BTN_RED)
@@ -73,7 +84,7 @@ async def start_image_inline(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await update.message.reply_text(msg, reply_markup=reply_markup)
     return MAKE_IMAGE
 
-async def more_yellow_inline(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def more_yellow_inline(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Выбор жёлтых групп крови"""
     query = update.callback_query
     # print(query.data)
@@ -92,7 +103,7 @@ async def more_yellow_inline(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await update.callback_query.edit_message_text(text=msg, reply_markup=reply_markup)
     return MAKE_IMAGE
 
-async def red_inline(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def red_inline(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Выбор красных групп крови"""
     query = update.callback_query
     # print(query.data)
@@ -120,7 +131,8 @@ async def red_inline(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.edit_message_text(text=msg, reply_markup=reply_markup)
     return MAKE_IMAGE
 
-async def light_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def light_done(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    logger.info(f'Пользователь {update.callback_query.from_user.id} закончил вводить группы')
     """Получение и отправка картинки со светофором"""
     query = update.callback_query
     await query.answer()
@@ -181,12 +193,16 @@ async def light_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_document(chat_id=user.tg_id, document=open(image.image_name, 'rb'))
     return END
 
-async def cancel(update:Update, context:ContextTypes.DEFAULT_TYPE):
+async def cancel(update:Update, context:ContextTypes.DEFAULT_TYPE) -> int:
+    """Остановка выполнения команды"""
+    logger.info(f'Пользователь {update.message.from_user.id} ввёл команду /cancel')
     await update.message.reply_text("Выполнение задания прервано.", reply_markup=ReplyKeyboardRemove())
     context.user_data.clear()
     return ConversationHandler.END
 
-async def query_cancel(update:Update, context:ContextTypes.DEFAULT_TYPE):
+async def query_cancel(update:Update, context:ContextTypes.DEFAULT_TYPE) -> int:
+    """Остановка выполнения команды для инлайн сообщений"""
+    logger.info(f'Пользователь {update.callback_query.from_user.id} ввёл команду /cancel query')
     query = update.callback_query
     await query.answer()
     await update.callback_query.edit_message_text(text="Выполнение задания прервано.")
@@ -194,7 +210,9 @@ async def query_cancel(update:Update, context:ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 # Функции для сбора информации о пользователе
-async def set_info_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def set_info_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Начало сбора информации об организации"""
+    logger.info(f'Пользователь {update.message.from_user.id} ввёл команду /info')
     user: User = await crud.get_user(tg_id=update.effective_user.id)
     if not user:
         user = await crud.create_user(tg_id=update.effective_user.id)
@@ -212,7 +230,9 @@ async def set_info_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['rename'] = True
         return ORG_RENAME
 
-async def set_info_org(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def set_info_org(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Получение названия организации"""
+    logger.info(f'Пользователь {update.message.from_user.id} на втором шаге /info')
     if context.user_data.get('rename'):
         user = await crud.get_user(tg_id=update.effective_user.id)
         org = await crud.get_org_by_tg_id(user.tg_id)
@@ -237,7 +257,9 @@ async def set_info_org(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(ts.SET_INFO_PASSWORD)
     return STEP_PASSWORD
 
-async def set_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def set_password(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Получение пароля для вступления в организацию и запрос данных для публикации"""
+    logger.info(f'Пользователь {update.message.from_user.id} ввёл пароль для организации')
     context.user_data['org'].join_password = update.message.text.strip()
     await crud.org_set_password(org=context.user_data['org'])
     await update.message.reply_text(ts.SET_INFO_EXPL)
@@ -246,8 +268,10 @@ async def set_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                     reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
     return STEP_CHOICE
 
-async def set_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def set_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Запрос данных в зависимости от выбора пользователя"""
     # update.message.reply_text(reply_markup = ReplyKeyboardRemove())
+    logger.info(f'Пользователь {update.message.from_user.id} сделал выбор для данных организации')
     match update.message.text:
         case ts.BTN_GRANT_ALL:
             context.user_data['choice'] = 'ALL'
@@ -267,25 +291,30 @@ async def set_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text('Хорошо')
             return ConversationHandler.END
 
-async def get_yd_login(update, context):
+async def get_yd_login(update, context) -> int:
+    logger.info(f'Пользователь {update.message.from_user.id} запросили логин ЯД')
     message = ts.SET_INFO_YD_LOGIN
     await update.message.reply_text(message, reply_markup=ReplyKeyboardRemove())
     return YD_LOGIN
 
-async def get_yd_pass(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def get_yd_pass(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    logger.info(f'Пользователь {update.message.from_user.id} запросили пароль ЯД')
     context.user_data['org'].yd_login = encode_str(update.message.text)
     message = ts.SET_INFO_YD_PASS
     await update.message.reply_text(message)
     return YD_PASS
 
-async def get_yd_url(update, context):
+async def get_yd_url(update, context) -> int:
+    logger.info(f'Пользователь {update.message.from_user.id} запросили ссылку на ЯД')
     context.user_data['org'].yd_pass = encode_str(update.message.text)
     message = ts.SET_INFO_YD_URL
     await update.message.reply_text(message)
     await context.bot.send_document(chat_id=update.effective_chat.id, document=open('bot_img/yd_site.jpg', 'rb'))
     return YD_URL
 
-async def get_vk_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def get_vk_token(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Сохранение данных по ЯД, если они есть, и запрос ВК токена"""
+    logger.info(f'Пользователь {update.message.from_user.id} запросили ВК токен')
     # Если отдаёт всё, то сначала сохраняем параметры ЯД
     if context.user_data['choice'] in ['ALL', 'YD']:
         groups, station_id, is_user = await yd_ids(url=update.message.text,
@@ -307,8 +336,10 @@ async def get_vk_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(message, reply_markup=ReplyKeyboardRemove())
     return VK_TOKEN
 
-async def set_vk_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def set_vk_token(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Сохранение ВК токена и запрос ссылки на группу"""
     # TODO: Добавить проверку на правильность ссылки
+    logger.info(f'Пользователь {update.message.from_user.id} ввёл вк токен')
     params = update.message.text.split('#')[1].split('&')
     for param in params:
         if param.split('=')[0] == 'access_token':
@@ -322,7 +353,9 @@ async def set_vk_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(ts.SET_INFO_VK_GROUP)
         return VK_GROUP_URL
 
-async def set_vk_group_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def set_vk_group_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Сохранение ИД группы ВК"""
+    logger.info(f'Пользователь {update.message.from_user.id} ввёл ссылку на группу в ВК {update.message.text}')
     vk_token = update.message.text.strip()
     result = await get_vk_group_id(token=decode_str(context.user_data['org'].vk_token), group_link=update.message.text)
     if 'group_id' in result:
@@ -337,7 +370,9 @@ async def set_vk_group_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return VK_TOKEN
 
 #Функции публикации светофора
-async def publish_everywhere(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def publish_everywhere(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Публикация светофора туда, где есть данные"""
+    logger.info(f'Пользователь {update.message.from_user.id} ввёл команду /pub')
     async def send_to_admins(org_id :int, text :str):
         admin_users = await crud.get_org_admins(org_id)
         for admin_user in admin_users:
@@ -382,7 +417,9 @@ async def publish_everywhere(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return ConversationHandler.END
 
 #Функции сохранения начала и конца текста
-async def get_start_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def get_start_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Запрос текста идущего передо светофором"""
+    logger.info(f'Пользователь {update.message.from_user.id} ввёл команду /start_text')
     org = crud.get_org_by_tg_id(update.effective_user.id)
     if not org:
         await update.message.reply_text(ts.SET_TEXT_ORG_REQ)
@@ -395,7 +432,9 @@ async def get_start_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['text'] = 'start'
     return SET_TEXT
 
-async def get_end_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def get_end_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Запрос текста идущего после светофора"""
+    logger.info(f'Пользователь {update.message.from_user.id} ввёл комнаду /end_text')
     org = crud.get_org_by_tg_id(update.effective_user.id)
     if not org:
         await update.message.reply_text(ts.SET_TEXT_ORG_REQ)
@@ -408,7 +447,10 @@ async def get_end_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['text'] = 'end'
     return SET_TEXT
 
-async def set_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def set_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Сохранение текста перед или после светофора"""
+    logger.info(f'Пользователь {update.message.from_user.id} ввёл данные для начала или конца текста: '
+                f'{update.message.text}')
     text = context.user_data.pop('text')
     if update.message.text.strip():
         org = await crud.get_org_by_tg_id(update.effective_user.id)
@@ -424,7 +466,8 @@ async def set_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 #Функции сохранения хештегов
-async def get_hashtag(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def get_hashtag(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    logger.info(f'Пользователь {update.message.from_user.id} ввёл команду /hashtag')
     org = crud.get_org_by_tg_id(update.effective_user.id)
     if not org:
         await update.message.reply_text(ts.SET_TEXT_ORG_REQ)
@@ -436,7 +479,8 @@ async def get_hashtag(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(ts.SET_HASHTAG)
     return SET_HASHTAG
 
-async def set_hashtag(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def set_hashtag(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    logger.info(f'Пользователь {update.message.from_user.id} ввёл хэштеги:{update.message.text}')
     if update.message.text.strip():
         org = await crud.get_org_by_tg_id(update.effective_user.id)
         org.hashtag = update.message.text.strip()
@@ -447,7 +491,8 @@ async def set_hashtag(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 # Функции присоединения к организации
-async def join_to_org_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def join_to_org_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    logger.info(f'Пользователь {update.message.from_user.id} ввёл команду /join')
     await update.message.reply_text(ts.JOIN_TO_ORG_START)
     orgs = await crud.get_all_orgs()
     if not orgs:
@@ -457,7 +502,8 @@ async def join_to_org_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(message)
     return JOIN_PASSWORD
 
-async def join_to_org_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def join_to_org_password(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    logger.info(f'Пользователь {update.message.from_user.id} выбрал организацию')
     org_id = update.message.text.strip()
     if not org_id.isdigit():
         await update.message.reply_text(ts.JOIN_TO_ORG_NOT_ID)
@@ -471,7 +517,8 @@ async def join_to_org_password(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text(ts.JOIN_TO_ORG_FAULT)
         return ConversationHandler.END
 
-async def join_to_org_end(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def join_to_org_end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    logger.info(f'Пользователь {update.message.from_user.id} ввёл пароль организации')
     if update.message.text == context.user_data['join_to_org']['password']:
         user = await crud.get_user(update.effective_user.id)
         user.organisation_id = context.user_data['join_to_org']['id']
@@ -486,7 +533,8 @@ async def join_to_org_end(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Функции назначения администратора
 async def start_org_adm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Старт добавления администратора"""
+    """Старт добавления администратора. Передача 0 во втором аргументе кнопки означает отсутствие иизменений"""
+    logger.info(f'Пользователь {update.message.from_user.id} ввёл команду /admins')
     user = await crud.get_user(update.effective_user.id)
     if not user.is_admin or not user.organisation_id:
         await update.message.reply_text(ts.ADMIN_REQ)
@@ -510,7 +558,8 @@ async def start_org_adm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     return SELECT_USER
 
 async def set_org_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Отображение выбранного пользователя и действия с ни"""
+    """Отображение выбранного пользователя и действия с ним, сохранение изменившихся значений"""
+    logger.info(f'Пользователь {update.callback_query.from_user.id} выбирает администратора')
     query = update.callback_query
     user_id, switch_state = query.data.split('__')
     await query.answer()
@@ -534,6 +583,7 @@ async def start_org_settings(update: Update, context: ContextTypes.DEFAULT_TYPE)
     """Устновка значений закрепленеия светофора и удаления предыдущего"""
     if update.callback_query:
         query = update.callback_query
+        logger.info(f'Пользователь {update.callback_query.from_user.id} ввёл команду /settings')
         await query.answer()
         if '__' in query.data:
             param, switch_state = query.data.split('__')
@@ -544,6 +594,8 @@ async def start_org_settings(update: Update, context: ContextTypes.DEFAULT_TYPE)
             else:
                 org.vk_is_delete_prev_post = not org.vk_is_delete_prev_post
                 await crud.set_org_settings(org=org, vk_del=True)
+    else:
+        logger.info(f'Пользователь {update.message.from_user.id} ввёл команду /settings')
 
     user = await crud.get_user(update.effective_user.id)
     if not user.is_admin or not user.organisation_id:
@@ -559,7 +611,7 @@ async def start_org_settings(update: Update, context: ContextTypes.DEFAULT_TYPE)
         msg += 'Светофор НЕ закраепляется на стене\n'
         keyboard.append([InlineKeyboardButton('Закреплять', callback_data='0__1')])
     if org.vk_is_delete_prev_post:
-        msg += 'Пост с предыдущем светофор удаляется со стены\n'
+        msg += 'Пост с предыдущем светофором удаляется со стены\n'
         keyboard.append([InlineKeyboardButton('Не удалять', callback_data='1__0')])
     else:
         msg += 'Пост с предыдущем светофором НЕ удаляется со стены\n'
@@ -574,6 +626,8 @@ async def start_org_settings(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 #Функция генерации светофора
 async def generate_samples(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Генерация образцов светофора. Доступно только для создателей бота"""
+    logger.info(f'Пользователь {update.message.from_user.id} ввёл команду /gen')
     if update.effective_user.id not in settings.super_admins:
         await update.message.reply_text(ts.SUPER_ADMIN_REQ)
         return ConversationHandler.END
@@ -597,6 +651,7 @@ async def generate_samples(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 # Функции выбора светофора
 async def start_set_light(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Старт выбора светофора"""
+    logger.info(f'Пользователь {update.message.from_user.id} ввёл команду /light')
     user = await crud.get_user(update.effective_user.id)
     if not user.is_admin or not user.organisation_id:
         await update.message.reply_text(ts.ADMIN_REQ)
@@ -615,8 +670,9 @@ async def start_set_light(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     await update.message.reply_text(text = ts.SET_LIGHT_ASK, reply_markup=reply_markup)
     return SET_ORG_LIGHT
 
-async def set_org_light(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Отображение выбранного пользователя и действия с ни"""
+async def set_org_light(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Установка выбранного светофора"""
+    logger.info(f'Пользователь {update.callback_query.from_user.id} ввёл выбрал светофор {update.callback_query.data}')
     query = update.callback_query
     selected_light = query.data.split('__')[1]
     await query.answer()
@@ -628,6 +684,7 @@ async def set_org_light(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 if __name__ == '__main__':
+    check_key()
     application = ApplicationBuilder().token(settings.token).build()
     start_handler = CommandHandler('start', start)
     # image_handler = ConversationHandler(

@@ -11,6 +11,7 @@ from config import settings
 
 
 def check_key():
+    """Проверка и создание ключевого файла для шифрования данных"""
     key_file = settings.base_dir / '.key'
     if not key_file.is_file():
         key = Fernet.generate_key()
@@ -18,14 +19,14 @@ def check_key():
             f.write(key)
 
 
-def encode_str(string):
+def encode_str(string) -> bytes:
     key_file = settings.base_dir / '.key'
     key = key_file.read_bytes()
     cipher = Fernet(key)
     return cipher.encrypt(string.encode('utf-8'))
 
 
-def decode_str(string):
+def decode_str(string) -> str:
     key_file = settings.base_dir / '.key'
     key = key_file.read_bytes()
     cipher = Fernet(key)
@@ -43,7 +44,6 @@ async def yd_ids(url: str, login: str, password: str):
     async with httpx.AsyncClient() as client:
         response = await client.post('https://adm.yadonor.ru/index.php?obj=BLOOD_STATIONS', data={'login': login, 'password': password})
            # TODO: добавить проверку ту ли ссылку нам пихнули
-        print(response)
         if response.status_code == 302:
             is_user = True
         else:
@@ -56,11 +56,10 @@ async def yd_ids(url: str, login: str, password: str):
             if param.split('=')[0] == 'BLOOD_RESERVE_ID':
                 n_first = int(param.split('=')[1])
                 groups = [str(x) for x in range(n_first, n_first + 8)]
-        print(groups, station_id, is_user)
         return groups, station_id, is_user
 
 
-def make_message(light: dict[str:str], start_text: str=None, end_text: str = None, hashtag:str = None):
+def make_message(light: dict[str:str], start_text: str=None, end_text: str = None, hashtag:str = None) -> str:
     """
     Формирование сообщение для светофора
     :param light: Шаблон готового светофора
@@ -103,7 +102,7 @@ def make_message(light: dict[str:str], start_text: str=None, end_text: str = Non
     return message_str
 
 
-async def get_vk_group_id(token:str, group_link: str):
+async def get_vk_group_id(token:str, group_link: str) -> dict[str:str|int]:
     """
     Получение ID группы в ВК с помощью vkbottle
     :param token: ВК токен
@@ -115,10 +114,10 @@ async def get_vk_group_id(token:str, group_link: str):
     try:
         r = await api.utils.resolve_screen_name(screen_name=group_name)
     except (VKAPIError[1116], VKAPIError[5]) as e:
-        print('Ошибка авторизации')
+        # print('Ошибка авторизации')
         return {'error_msg': 'Не верный токен'}
     except VKAPIError as e:
-        print(e.error_msg, e.code)
+        # print(e.error_msg, e.code)
         return {'error_msg': f'Неизвестная ошибка: error:{e.error_msg}, code:{e.code}'}
     else:
         return {'group_id': int(r.object_id)}
@@ -143,13 +142,11 @@ async def publish_to_yd(login, password, station_id, group_ids, group_vals):
         #TODO: добавить try
         await client.post('https://adm.yadonor.ru/index.php?obj=BLOOD_STATIONS',
                           data={'login': login, 'password': password})
-        # TODO: Исправть reservid
         r = await client.post(f'https://adm.yadonor.ru/index.php?obj=BLOOD_RESERVE&action=change&BLOOD_RESERVE_ID={blood_reserve_id}&BLOOD_STATIONS_ID={station_id}'
                           , data=yd_data)
-        print(r.request)
 
 async def publish_to_vk(vk_token: str, org_dir: str, image_name: str, group_id: int, text: str, is_pin: bool =True,
-                        prev_post_id: int=None, is_del_post: bool=True):
+                        prev_post_id: int=None, is_del_post: bool=True) -> dict[str:str|int]:
     """
     Публикация светофора и сообщения в VK
     :param vk_token: Токен ВК
@@ -159,6 +156,7 @@ async def publish_to_vk(vk_token: str, org_dir: str, image_name: str, group_id: 
     :param text: Текст сообщения
     :param is_pin: Флаг необходимости закрепления светофора на стене
     :param prev_post_id: ID предыдущего поста для удаления
+    :param is_del_post: Флаг удаления предыдущего поста
     :return:
     """
     api = API(vk_token)
@@ -169,14 +167,13 @@ async def publish_to_vk(vk_token: str, org_dir: str, image_name: str, group_id: 
         img_path = config.BASE_DIR / 'img' / org_dir / image_name
         photo = await photo_uploader.upload(file_source=str(img_path), group_id=group_id)
         post_response = await api.wall.post(owner_id=-group_id, from_group=True, message=text, attachments=[photo])
-        print(post_response)
         if is_pin:
             await api.wall.pin(owner_id=-group_id, post_id=post_response.post_id)
     except (VKAPIError[1116], VKAPIError[5]) as e:
-        print('Ошибка авторизации')
+        # print('Ошибка авторизации')
         return {'error_msg': 'Не верный токен'}
     except VKAPIError as e:
-        print(e.error_msg, e.code)
+        # print(e.error_msg, e.code)
         return {'error_msg': f'Неизвестная ошибка: error:{e.error_msg}, code:{e.code}'}
     else:
         return {'post_id': post_response.post_id}
