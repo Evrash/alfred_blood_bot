@@ -1,7 +1,8 @@
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-from sqlalchemy import func, MetaData, Boolean, String, Integer, DateTime, ForeignKey
+from sqlalchemy import func, MetaData, Boolean, String, Integer, DateTime, ForeignKey, Enum
 from datetime import datetime
 from typing import List
+import enum
 
 from config import settings
 
@@ -54,4 +55,23 @@ class User(Base):
     organisation_id: Mapped[int] = mapped_column(ForeignKey('organisations.id'), unique=False, nullable=True)
     organisation: Mapped['Organisation'] = relationship(back_populates='users')
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+
+class BloodColor(enum.Enum):
+    red = 0
+    yellow = 1
+    green = 2
+
+class Statistic(Base):
+    __tablename__ = 'statistic'
+    organisation_id: Mapped[int] = mapped_column(ForeignKey('organisations.id'), unique=False, nullable=True)
+    organisation: Mapped['Organisation'] = relationship(back_populates='users')
+    o_plus: Mapped[BloodColor] = mapped_column(Enum(BloodColor))
+    o_minus: Mapped[BloodColor] = mapped_column(Enum(BloodColor))
+    a_plus: Mapped[BloodColor] = mapped_column(Enum(BloodColor))
+    a_minus: Mapped[BloodColor] = mapped_column(Enum(BloodColor))
+    b_plus: Mapped[BloodColor] = mapped_column(Enum(BloodColor))
+    b_minus: Mapped[BloodColor] = mapped_column(Enum(BloodColor))
+    ab_plus: Mapped[BloodColor] = mapped_column(Enum(BloodColor))
+    ab_minus: Mapped[BloodColor] = mapped_column(Enum(BloodColor))
+
 

@@ -1,7 +1,6 @@
 import logging
 from logging.handlers import RotatingFileHandler
 import os
-from shutil import rmtree
 from typing import TYPE_CHECKING
 
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
@@ -245,7 +244,7 @@ async def set_info_org(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         org = await crud.get_organisation_by_name(name=update.message.text.strip())
         if org:
             await update.message.reply_text(ts.SET_INFO_SAME_ORG)
-            #TODO: Добвить сброс организации
+            #TODO: Добавить сброс организации
             return ConversationHandler.END
         org: Organisation = await crud.create_organisation(name=update.message.text)
         user: User = await crud.get_user(tg_id=update.effective_user.id)
@@ -395,6 +394,7 @@ async def publish_everywhere(update: Update, context: ContextTypes.DEFAULT_TYPE)
                                     station_id=org.yd_station_id, group_ids=org.yd_groups_ids,
                                     group_vals=org.last_yd_str)
                 await crud.set_yd_last_pub_date(org=org)
+                await crud.set_yd_last_pub_date(org=org)
                 await send_to_admins(org_id=org.id, text=ts.YD_PUB_SUCCESS)
         if org.vk_token and org.vk_group_id and user.is_admin:
             if org.vk_last_pub_date and org.vk_last_pub_date > org.last_create_date:
@@ -434,7 +434,7 @@ async def get_start_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 async def get_end_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Запрос текста идущего после светофора"""
-    logger.info(f'Пользователь {update.message.from_user.id} ввёл комнаду /end_text')
+    logger.info(f'Пользователь {update.message.from_user.id} ввёл команду /end_text')
     org = crud.get_org_by_tg_id(update.effective_user.id)
     if not org:
         await update.message.reply_text(ts.SET_TEXT_ORG_REQ)
@@ -533,7 +533,7 @@ async def join_to_org_end(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 # Функции назначения администратора
 async def start_org_adm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Старт добавления администратора. Передача 0 во втором аргументе кнопки означает отсутствие иизменений"""
+    """Старт добавления администратора. Передача 0 во втором аргументе кнопки означает отсутствие изменений"""
     logger.info(f'Пользователь {update.message.from_user.id} ввёл команду /admins')
     user = await crud.get_user(update.effective_user.id)
     if not user.is_admin or not user.organisation_id:
@@ -580,7 +580,7 @@ async def set_org_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Функции назначения администратора
 async def start_org_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Устновка значений закрепленеия светофора и удаления предыдущего"""
+    """Установка значений закрепления светофора и удаления предыдущего"""
     if update.callback_query:
         query = update.callback_query
         logger.info(f'Пользователь {update.callback_query.from_user.id} ввёл команду /settings')
@@ -608,7 +608,7 @@ async def start_org_settings(update: Update, context: ContextTypes.DEFAULT_TYPE)
         msg += 'Светофор закрепляется на стене\n'
         keyboard.append([InlineKeyboardButton('Не закреплять', callback_data='0__0')])
     else:
-        msg += 'Светофор НЕ закраепляется на стене\n'
+        msg += 'Светофор НЕ закрепляется на стене\n'
         keyboard.append([InlineKeyboardButton('Закреплять', callback_data='0__1')])
     if org.vk_is_delete_prev_post:
         msg += 'Пост с предыдущем светофором удаляется со стены\n'

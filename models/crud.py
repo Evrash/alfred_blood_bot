@@ -2,7 +2,7 @@ import datetime
 
 from sqlalchemy import select, update
 
-from models import User, db_helper, Organisation
+from models import User, db_helper, Organisation, Statistic
 from sqlalchemy.orm import selectinload
 
 
@@ -272,3 +272,19 @@ async def set_light_template(org: Organisation):
         )
         await conn.execute(stmt)
         await conn.commit()
+
+
+async def set_statistic(org: Organisation):
+    async with (db_helper.session_factory() as conn):
+        stmt = select(Statistic).where(Statistic.organisation_id == org.id, Statistic.updated_at.date() == datetime.datetime.now().date())
+        print(stmt)
+        result = await conn.execute(stmt)
+        if result:
+            return result.scalar()
+        # stmt = (
+        #     update(Organisation)
+        #     .values(vk_template = org.vk_template)
+        #     .filter_by(id=org.id)
+        # )
+        # await conn.execute(stmt)
+        # await conn.commit()
