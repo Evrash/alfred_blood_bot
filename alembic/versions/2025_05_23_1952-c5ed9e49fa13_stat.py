@@ -1,8 +1,8 @@
 """stat
 
-Revision ID: 1ad6dd95f697
+Revision ID: c5ed9e49fa13
 Revises: 42c97d4f8366
-Create Date: 2025-05-23 16:31:40.382698
+Create Date: 2025-05-23 19:52:36.285526
 
 """
 
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = "1ad6dd95f697"
+revision: str = "c5ed9e49fa13"
 down_revision: Union[str, None] = "42c97d4f8366"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -83,6 +83,7 @@ def upgrade() -> None:
             ["organisations.id"],
             name=op.f("fk_statistic_organisation_id_organisations"),
         ),
+
     )
 
 

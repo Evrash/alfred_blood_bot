@@ -1,6 +1,6 @@
 import datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 
 from models import User, db_helper, Organisation, Statistic
 from sqlalchemy.orm import selectinload
@@ -18,17 +18,13 @@ async def get_user(tg_id: int) -> User | None:
         # result = await conn.get(User, tg_id)
         stmt = select(User).options(selectinload(User.organisation)).where(User.tg_id==tg_id)
         result = await conn.execute(stmt)
-        if result:
-            return result.scalar()
-        return None
+        return result.scalar()
 
 async def get_user_by_id(id: int) -> User | None:
     async with db_helper.session_factory() as conn:
         stmt = select(User).where(User.id == id)
         result = await conn.execute(stmt)
-        if result:
-            return result.scalar()
-        return None
+        return result.scalar()
 
 async def get_or_create(tg_id: int, full_name: str|None = None, username: str|None = None) -> User:
     result = await get_user(tg_id)
@@ -40,49 +36,39 @@ async def get_org_by_tg_id(tg_id: int) -> Organisation | None:
     async with db_helper.session_factory() as conn:
         stmt = select(Organisation).join(User, User.organisation_id == Organisation.id).where(User.tg_id == tg_id)
         result = await conn.execute(stmt)
-        if result:
-            return result.scalar()
-        return None
+        return result.scalar()
 
 async def get_org_by_id(id: int) -> Organisation | None:
     async with db_helper.session_factory() as conn:
         stmt = select(Organisation).where(Organisation.id == id)
         result = await conn.execute(stmt)
-        if result:
-            return result.scalar()
-        return None
+        return result.scalar()
+        #     return result.scalar()
+        # return None
 
 async def get_org_admins(org_id: int) -> list[User] | None:
     async with db_helper.session_factory() as conn:
         stmt = select(User).where(User.is_admin == True, User.organisation_id == org_id)
         result = await conn.execute(stmt)
-        if result:
-            return result.scalars().all()
-        return None
+        return result.scalars().all()
 
 async def get_org_users(org_id: int) -> list[User] | None:
     async with db_helper.session_factory() as conn:
         stmt = select(User).where(User.organisation_id == org_id)
         result = await conn.execute(stmt)
-        if result:
-            return result.scalars().all()
-        return None
+        return result.scalars().all()
 
 async def get_organisation_by_name(name: str) -> Organisation | None:
     async with db_helper.session_factory() as conn:
         stmt = select(Organisation).where(Organisation.name==name)
         result = await conn.execute(stmt)
-        if result:
-            return result.scalar()
-        return None
+        return result.scalar()
 
 async def get_all_orgs() -> list[Organisation] | None:
     async with db_helper.session_factory() as conn:
         stmt = select(Organisation)
         result = await conn.execute(stmt)
-        if result:
-            return result.scalars().all()
-        return None
+        return result.scalars().all()
 
 async def create_organisation(name: str) -> Organisation:
     async with db_helper.session_factory() as conn:
@@ -274,17 +260,20 @@ async def set_light_template(org: Organisation):
         await conn.commit()
 
 
-async def set_statistic(org: Organisation):
+async def set_statistic(org: Organisation, light_template:dict[str:str] = None):
     async with (db_helper.session_factory() as conn):
-        stmt = select(Statistic).where(Statistic.organisation_id == org.id, Statistic.updated_at.date() == datetime.datetime.now().date())
-        print(stmt)
+        stmt = select(Statistic).where(Statistic.organisation_id == org.id, func.date(Statistic.updated_at) == datetime.datetime.utcnow().date())
         result = await conn.execute(stmt)
-        if result:
-            return result.scalar()
-        # stmt = (
-        #     update(Organisation)
-        #     .values(vk_template = org.vk_template)
-        #     .filter_by(id=org.id)
-        # )
-        # await conn.execute(stmt)
-        # await conn.commit()
+        row =  result.one_or_none()
+        if row:
+            stmt = (
+                update(Statistic)
+                .values(**light_template)
+                .filter_by(id=row[0].id)
+            )
+            await conn.execute(stmt)
+            await conn.commit()
+        else:
+            statistic = Statistic(organisation_id = org.id, **light_template)
+            conn.add(statistic)
+            await conn.commit()

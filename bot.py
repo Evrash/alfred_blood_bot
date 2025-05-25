@@ -173,6 +173,7 @@ async def light_done(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     image.draw_image()
     await update.callback_query.edit_message_text(text=ts.IMG_READY)
     if org:
+        await crud.set_statistic(org=org, light_template=light_template)
         msg = make_message(light=light_template, start_text=org.start_text, end_text=org.end_text, hashtag=org.hashtag)
         msg_author = f"Светофор сформирован {update.callback_query.from_user.full_name}"
         if update.callback_query.from_user.username:

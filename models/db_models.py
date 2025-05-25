@@ -45,6 +45,7 @@ class Organisation(Base):
     end_text: Mapped[str] = mapped_column(String, nullable=True)
     notification_time: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     users: Mapped[List['User']] = relationship(back_populates='organisation')
+    statistic: Mapped[List['Statistic']] = relationship(back_populates='organisation')
 
 class User(Base):
     __tablename__ = 'users'
@@ -63,8 +64,9 @@ class BloodColor(enum.Enum):
 
 class Statistic(Base):
     __tablename__ = 'statistic'
+
     organisation_id: Mapped[int] = mapped_column(ForeignKey('organisations.id'), unique=False, nullable=True)
-    organisation: Mapped['Organisation'] = relationship(back_populates='users')
+    organisation: Mapped['Organisation'] = relationship(back_populates='statistic')
     o_plus: Mapped[BloodColor] = mapped_column(Enum(BloodColor))
     o_minus: Mapped[BloodColor] = mapped_column(Enum(BloodColor))
     a_plus: Mapped[BloodColor] = mapped_column(Enum(BloodColor))
