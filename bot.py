@@ -24,7 +24,7 @@ logging.basicConfig(
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
-log_handler = RotatingFileHandler(settings.base_dir / 'log.log', maxBytes=5000000, backupCount=10)
+log_handler = RotatingFileHandler(settings.base_dir / 'log.log', maxBytes=5000000, backupCount=10, encoding='utf-8')
 logger.addHandler(log_handler)
 
 STEP_YELLOW, STEP_RED, STEP_DONE, MAKE_IMAGE, STEP_PASSWORD = range(5)

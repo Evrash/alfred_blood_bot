@@ -13,6 +13,16 @@ async def create_user(tg_id: int, full_name: str|None = None, username: str|None
         await conn.commit()
         return user
 
+async def update_user(user:User):
+    async with db_helper.session_factory() as conn:
+        stmt = (
+            update(User)
+            .values(full_name=user.full_name, username=user.username)
+            .filter_by(id=user.id)
+        )
+        await conn.execute(stmt)
+        await conn.commit()
+
 async def get_user(tg_id: int) -> User | None:
     async with db_helper.session_factory() as conn:
         # result = await conn.get(User, tg_id)
@@ -30,6 +40,8 @@ async def get_or_create(tg_id: int, full_name: str|None = None, username: str|No
     result = await get_user(tg_id)
     if not result:
         return await create_user(tg_id, full_name, username)
+    result.full_name, result.username = full_name, username
+    await update_user(result)
     return result
 
 async def get_org_by_tg_id(tg_id: int) -> Organisation | None:
