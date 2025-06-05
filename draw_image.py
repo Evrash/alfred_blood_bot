@@ -65,6 +65,7 @@ class LightImage(object):
                     image.paste(open_image, position, open_image)
 
         image_name = (settings.base_dir / f'img/{self.org}'/
-                      f'{datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}-{self.image_template.name}.png')
+                      f'{datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}-{self.image_template.name}.jpg')
+        image = image.convert('RGB')
         image.save(image_name)
         self.image_name = image_name
