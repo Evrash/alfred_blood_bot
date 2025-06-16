@@ -187,7 +187,7 @@ async def light_done(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         for user in org_users:
             await context.bot.send_message(chat_id=user.tg_id, text=msg)
             if file_id:
-                await context.bot.send_document(chat_id=user.tg_id, document=file_id)
+                message = await context.bot.send_document(chat_id=user.tg_id, document=file_id)
             else:
                 message = await context.bot.send_document(chat_id=user.tg_id, document=open(image.image_name, 'rb'))
                 file_id = message.document.file_id
@@ -688,6 +688,62 @@ async def set_org_light(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     msg = f'Светофор установлен. Шаблон {selected_light}'
     await update.callback_query.edit_message_text(text=msg)
     return ConversationHandler.END
+
+# Функции назначения администратора
+async def start_org_username(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Старт обновления данных о пользователе"""
+    logger.info(f'Пользователь {update.message.from_user.id} ввёл команду /users')
+    user = await crud.get_user(update.effective_user.id)
+    if not user.is_admin or not user.organisation_id:
+        await update.message.reply_text(ts.ADMIN_REQ)
+        return ConversationHandler.END
+    org_users = await crud.get_org_users(org_id=user.organisation_id)
+    if len(org_users) == 1:
+        await update.message.reply_text(ts.SET_ADMIN_NO_USERS)
+        return ConversationHandler.END
+    keyboard = []
+    for org_user in org_users:
+        if org_user.tg_id == user.tg_id:
+            continue
+        if org_user.username:
+            username = f'{org_user.tg_id} {org_user.full_name} {org_user.username}'
+        else:
+            username = f'{org_user.tg_id} {org_user.full_name}'
+        keyboard.append([InlineKeyboardButton(username, callback_data=f'{org_user.id}')])
+    keyboard.append([InlineKeyboardButton(f'Отмена', callback_data='stop')])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(ts.SET_ADMIN_EXPL, reply_markup=reply_markup)
+    return SELECT_USER
+
+async def set_org_username(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обновление данных о пользователе"""
+    logger.info(f'Пользователь {update.callback_query.from_user.id} выбрал пользователя')
+    query = update.callback_query
+    user_id = int(query)
+    await query.answer()
+    user = await crud.get_user_by_id(id=user_id)
+    try:
+        message = await context.bot.send_message(chat_id=user.tg_id, text=ts.CHECK_USER)
+        user.full_name = message.chat.full_name
+        user.username = message.chat.username
+        await crud.update_user(user = user)
+    except Exception as e:
+        logger.info(e)
+        await crud.delete_user(user)
+
+    if switch_state:
+        user.is_admin = not user.is_admin
+        await crud.user_set_admin(user)
+    if user.is_admin:
+        msg = f'Выбран {user.full_name}. Он администратор'
+        keyboard = [[InlineKeyboardButton(f'Убрать из администраторов', callback_data=f'{user_id}__1')]]
+    else:
+        msg = f'Выбран {user.full_name}. Он НЕ администратор'
+        keyboard = [[InlineKeyboardButton(f'Сделать администратором', callback_data=f'{user_id}__1')]]
+    keyboard.append([InlineKeyboardButton(f'Отмена', callback_data='stop')])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.edit_message_text(text=msg, reply_markup=reply_markup)
+    return SELECT_USER
 
 if __name__ == '__main__':
     check_key()

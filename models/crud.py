@@ -1,6 +1,6 @@
 import datetime
 
-from sqlalchemy import select, update, func
+from sqlalchemy import select, update, func, delete
 
 from models import User, db_helper, Organisation, Statistic
 from sqlalchemy.orm import selectinload
@@ -289,3 +289,13 @@ async def set_statistic(org: Organisation, light_template:dict[str:str] = None):
             statistic = Statistic(organisation_id = org.id, **light_template)
             conn.add(statistic)
             await conn.commit()
+
+async def delete_user(user: User):
+    async with (db_helper.session_factory() as conn):
+        stmt = (
+            delete(User)
+            .filter_by(id=user.tg_id)
+        )
+        await conn.execute(stmt)
+        await conn.commit()
+
