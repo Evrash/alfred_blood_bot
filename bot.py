@@ -183,9 +183,14 @@ async def light_done(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         org.last_image_name = image.image_name.name
         await crud.set_last_light_post_info(org)
         org_users = await crud.get_org_users(org.id)
+        file_id = None
         for user in org_users:
             await context.bot.send_message(chat_id=user.tg_id, text=msg)
-            await context.bot.send_document(chat_id=user.tg_id, document=open(image.image_name, 'rb'))
+            if file_id:
+                await context.bot.send_document(chat_id=user.tg_id, document=file_id)
+            else:
+                message = await context.bot.send_document(chat_id=user.tg_id, document=open(image.image_name, 'rb'))
+                file_id = message.document.file_id
             await context.bot.send_message(chat_id=user.tg_id, text=msg_author)
     else:
         msg = make_message(light=light_template)
