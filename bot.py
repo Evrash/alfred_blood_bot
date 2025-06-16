@@ -567,9 +567,9 @@ async def set_org_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Отображение выбранного пользователя и действия с ним, сохранение изменившихся значений"""
     logger.info(f'Пользователь {update.callback_query.from_user.id} выбирает администратора')
     query = update.callback_query
-    user_id, switch_state = query.data.split('__')
+    user_id, switch_state = map(int, query.data.split('__'))
     await query.answer()
-    user = await crud.get_user_by_id(id=int(user_id))
+    user = await crud.get_user_by_id(id=user_id)
     if switch_state:
         user.is_admin = not user.is_admin
         await crud.user_set_admin(user)
