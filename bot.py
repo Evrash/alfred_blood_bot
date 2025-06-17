@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, ConversationHandler, MessageHandler, filters, CallbackQueryHandler
+from telegram.error import Forbidden
 from datetime import datetime
 
 from config import settings
@@ -30,7 +31,7 @@ logger.addHandler(log_handler)
 STEP_YELLOW, STEP_RED, STEP_DONE, MAKE_IMAGE, STEP_PASSWORD = range(5)
 VK_GROUP_URL, VK_TOKEN, YD_URL, YD_PASS, YD_LOGIN, STEP_CHOICE, ORG_NAME, SET_TIME, SET_HASHTAG, SET_TEXT, SET_END_TEXT, ORG_RENAME = range(10,22)
 JOIN_TO_ORG, JOIN_PASSWORD = range(30,32)
-SELECT_USER, SET_ORG_SETTINGS, SET_ORG_LIGHT = range(40,43)
+SELECT_USER, SET_ORG_SETTINGS, SET_ORG_LIGHT, SELECT_USERNAME = range(40,44)
 END = ConversationHandler.END
 
 def get_keyboard(step_in: int, step_out: int, bt_text: str) -> list[list[InlineKeyboardButton]]:
@@ -692,7 +693,26 @@ async def set_org_light(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 # Функции назначения администратора
 async def start_org_username(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Старт обновления данных о пользователе"""
-    logger.info(f'Пользователь {update.message.from_user.id} ввёл команду /users')
+    update_message = ''
+    if update.callback_query:
+        logger.info(f'Пользователь {update.callback_query.from_user.id} выбрал пользователя {update.callback_query}')
+        query = update.callback_query
+        user_id = int(query.data)
+        await query.answer()
+        user = await crud.get_user_by_id(id=user_id)
+        try:
+            message = await context.bot.send_message(chat_id=user.tg_id, text=ts.CHECK_USER)
+            user.full_name = message.chat.full_name
+            user.username = message.chat.username
+            await crud.update_user(user=user)
+            update_message = f'Пользователь {user.full_name} {user.username} был обновлён в {datetime.now().strftime("%M:%S")}'
+        except Forbidden as e:
+            logger.info(e)
+            await crud.delete_user(user)
+        except Exception as e:
+            logger.error(e)
+    else:
+        logger.info(f'Пользователь {update.message.from_user.id} ввёл команду /users')
     user = await crud.get_user(update.effective_user.id)
     if not user.is_admin or not user.organisation_id:
         await update.message.reply_text(ts.ADMIN_REQ)
@@ -712,38 +732,11 @@ async def start_org_username(update: Update, context: ContextTypes.DEFAULT_TYPE)
         keyboard.append([InlineKeyboardButton(username, callback_data=f'{org_user.id}')])
     keyboard.append([InlineKeyboardButton(f'Отмена', callback_data='stop')])
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(ts.SET_ADMIN_EXPL, reply_markup=reply_markup)
-    return SELECT_USER
-
-async def set_org_username(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обновление данных о пользователе"""
-    logger.info(f'Пользователь {update.callback_query.from_user.id} выбрал пользователя')
-    query = update.callback_query
-    user_id = int(query)
-    await query.answer()
-    user = await crud.get_user_by_id(id=user_id)
-    try:
-        message = await context.bot.send_message(chat_id=user.tg_id, text=ts.CHECK_USER)
-        user.full_name = message.chat.full_name
-        user.username = message.chat.username
-        await crud.update_user(user = user)
-    except Exception as e:
-        logger.info(e)
-        await crud.delete_user(user)
-
-    if switch_state:
-        user.is_admin = not user.is_admin
-        await crud.user_set_admin(user)
-    if user.is_admin:
-        msg = f'Выбран {user.full_name}. Он администратор'
-        keyboard = [[InlineKeyboardButton(f'Убрать из администраторов', callback_data=f'{user_id}__1')]]
+    if update_message:
+        await update.callback_query.edit_message_text(f'{update_message}\n{ts.SET_USERNAME_EXPL}', reply_markup=reply_markup)
     else:
-        msg = f'Выбран {user.full_name}. Он НЕ администратор'
-        keyboard = [[InlineKeyboardButton(f'Сделать администратором', callback_data=f'{user_id}__1')]]
-    keyboard.append([InlineKeyboardButton(f'Отмена', callback_data='stop')])
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.callback_query.edit_message_text(text=msg, reply_markup=reply_markup)
-    return SELECT_USER
+        await update.message.reply_text(ts.SET_USERNAME_EXPL, reply_markup=reply_markup)
+    return SELECT_USERNAME
 
 if __name__ == '__main__':
     check_key()
@@ -846,6 +839,15 @@ if __name__ == '__main__':
         fallbacks=[CommandHandler('cancel', query_cancel)]
     )
 
+    org_username_handler = ConversationHandler(
+        entry_points=[CommandHandler('users', start_org_username)],
+        states={
+            SELECT_USERNAME: [CallbackQueryHandler(start_org_username, pattern='^[0-9]'),
+                            CallbackQueryHandler(query_cancel, pattern='stop')],
+        },
+        fallbacks=[CommandHandler('cancel', query_cancel)]
+    )
+
     application.add_handler(start_handler)
     application.add_handler(image_handler)
     application.add_handler(info_handler)
@@ -858,5 +860,6 @@ if __name__ == '__main__':
     application.add_handler(org_settings_handler)
     application.add_handler(gen_img_handler)
     application.add_handler(light_settings_handler)
+    application.add_handler(org_username_handler)
 
     application.run_polling()
