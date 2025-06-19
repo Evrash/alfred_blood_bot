@@ -294,7 +294,7 @@ async def delete_user(user: User):
     async with (db_helper.session_factory() as conn):
         stmt = (
             delete(User)
-            .filter_by(id=user.tg_id)
+            .filter_by(id=user.id)
         )
         await conn.execute(stmt)
         await conn.commit()

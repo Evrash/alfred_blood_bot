@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO, filename=settings.base_dir / 'log.log'
+    level=logging.INFO, filename=settings.base_dir / 'log.log', encoding='utf-8'
 )
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -427,7 +427,7 @@ async def publish_everywhere(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def get_start_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Запрос текста идущего передо светофором"""
     logger.info(f'Пользователь {update.message.from_user.id} ввёл команду /start_text')
-    org = crud.get_org_by_tg_id(update.effective_user.id)
+    org = await crud.get_org_by_tg_id(update.effective_user.id)
     if not org:
         await update.message.reply_text(ts.SET_TEXT_ORG_REQ)
         return ConversationHandler.END
@@ -442,7 +442,7 @@ async def get_start_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def get_end_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Запрос текста идущего после светофора"""
     logger.info(f'Пользователь {update.message.from_user.id} ввёл команду /end_text')
-    org = crud.get_org_by_tg_id(update.effective_user.id)
+    org = await crud.get_org_by_tg_id(update.effective_user.id)
     if not org:
         await update.message.reply_text(ts.SET_TEXT_ORG_REQ)
         return ConversationHandler.END
@@ -475,7 +475,7 @@ async def set_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 #Функции сохранения хештегов
 async def get_hashtag(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logger.info(f'Пользователь {update.message.from_user.id} ввёл команду /hashtag')
-    org = crud.get_org_by_tg_id(update.effective_user.id)
+    org = await crud.get_org_by_tg_id(update.effective_user.id)
     if not org:
         await update.message.reply_text(ts.SET_TEXT_ORG_REQ)
         return ConversationHandler.END
@@ -695,7 +695,7 @@ async def start_org_username(update: Update, context: ContextTypes.DEFAULT_TYPE)
     """Старт обновления данных о пользователе"""
     update_message = ''
     if update.callback_query:
-        logger.info(f'Пользователь {update.callback_query.from_user.id} выбрал пользователя {update.callback_query}')
+        logger.info(f'Пользователь {update.callback_query.from_user.id} выбрал пользователя {update.callback_query.data}')
         query = update.callback_query
         user_id = int(query.data)
         await query.answer()
@@ -705,12 +705,14 @@ async def start_org_username(update: Update, context: ContextTypes.DEFAULT_TYPE)
             user.full_name = message.chat.full_name
             user.username = message.chat.username
             await crud.update_user(user=user)
-            update_message = f'Пользователь {user.full_name} {user.username} был обновлён в {datetime.now().strftime("%M:%S")}'
+            update_message = f'Пользователь {user.full_name} {user.username} был обновлён в {datetime.now().strftime("%H:%M:%S")}'
         except Forbidden as e:
             logger.info(e)
             await crud.delete_user(user)
+            update_message = f'Пользователь {user.full_name} {user.username} был удалён'
         except Exception as e:
             logger.error(e)
+            update_message = ts.ERROR_LOG
     else:
         logger.info(f'Пользователь {update.message.from_user.id} ввёл команду /users')
     user = await crud.get_user(update.effective_user.id)
