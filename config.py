@@ -26,6 +26,14 @@ class DbSettings(BaseModel):
         "pk": "pk_%(table_name)s"
     }
 
+class ProxySettings(BaseModel):
+    use_proxy: bool = False
+    proto: str = ''
+    host: str = ''
+    port: str = ''
+    login: str = ''
+    password: str = ''
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file= (BASE_DIR / '.env.template', BASE_DIR / '.env'),
@@ -38,6 +46,7 @@ class Settings(BaseSettings):
     default_img_template: str = 'simple_standard'
     group: BloodGroups = BloodGroups()
     db: DbSettings = DbSettings()
+    proxy: ProxySettings = ProxySettings()
     super_admins: list = []
 
 settings = Settings()

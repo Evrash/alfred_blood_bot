@@ -742,7 +742,13 @@ async def start_org_username(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 if __name__ == '__main__':
     check_key()
-    application = ApplicationBuilder().token(settings.token).build()
+    proxy_url: str = (f'{settings.proxy.proto}://'
+                      f'{settings.proxy.login}:{settings.proxy.password}'
+                      f'@{settings.proxy.host}:{settings.proxy.port}')
+    application = (ApplicationBuilder()
+                   .token(settings.token)
+                   .proxy(proxy_url)
+                   .build())
     start_handler = CommandHandler('start', start)
     # image_handler = ConversationHandler(
     #     entry_points=[CommandHandler('image', start_image)],
