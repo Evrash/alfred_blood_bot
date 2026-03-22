@@ -747,7 +747,7 @@ if __name__ == '__main__':
                       f'@{settings.proxy.host}:{settings.proxy.port}')
     application = (ApplicationBuilder()
                    .token(settings.token)
-                   .proxy(proxy_url)
+                   .proxy(proxy_url).get_updates_proxy(proxy_url)
                    .build())
     start_handler = CommandHandler('start', start)
     # image_handler = ConversationHandler(
