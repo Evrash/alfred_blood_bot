@@ -745,10 +745,15 @@ if __name__ == '__main__':
     proxy_url: str = (f'{settings.proxy.proto}://'
                       f'{settings.proxy.login}:{settings.proxy.password}'
                       f'@{settings.proxy.host}:{settings.proxy.port}')
-    application = (ApplicationBuilder()
-                   .token(settings.token)
-                   .proxy(proxy_url).get_updates_proxy(proxy_url)
-                   .build())
+    if settings.proxy.use_proxy:
+        application = (ApplicationBuilder()
+                       .token(settings.token)
+                       .proxy(proxy_url).get_updates_proxy(proxy_url)
+                       .build())
+    else:
+        application = (ApplicationBuilder()
+                       .token(settings.token)
+                       .build())
     start_handler = CommandHandler('start', start)
     # image_handler = ConversationHandler(
     #     entry_points=[CommandHandler('image', start_image)],
