@@ -1,0 +1,108 @@
+{
+    "name": "sport_2026",
+    "dir": "6",
+    "size": [
+        1254,
+        1254
+    ],
+    "elements": {
+        "back": [
+            "back.jpg"
+        ],
+        "main": {
+            "box": {
+                "o_plus": {
+                    "position": {
+                        "x": 119,
+                        "y": 505
+                    },
+                    "image": {
+                        "red": "red_plus.png",
+                        "green": "green_plus.png",
+                        "yellow": "yellow_plus.png"
+                    }
+                },
+                "o_minus": {
+                    "position": {
+                        "x": 369,
+                        "y": 505
+                    },
+                    "image": {
+                        "red": "red_minus.png",
+                        "green": "green_minus.png",
+                        "yellow": "yellow_minus.png"
+                    }
+                },
+                "a_plus": {
+                    "position": {
+                        "x": 658,
+                        "y": 505
+                    },
+                    "image": {
+                        "red": "red_plus.png",
+                        "green": "green_plus.png",
+                        "yellow": "yellow_plus.png"
+                    }
+                },
+                "a_minus": {
+                    "position": {
+                        "x": 908,
+                        "y": 505
+                    },
+                    "image": {
+                        "red": "red_minus.png",
+                        "green": "green_minus.png",
+                        "yellow": "yellow_minus.png"
+                    }
+                },
+                "b_plus": {
+                    "position": {
+                        "x": 119,
+                        "y": 761
+                    },
+                    "image": {
+                        "red": "red_plus.png",
+                        "green": "green_plus.png",
+                        "yellow": "yellow_plus.png"
+                    }
+                },
+                "b_minus": {
+                    "position": {
+                        "x": 369,
+                        "y": 761
+                    },
+                    "image": {
+                        "red": "red_minus.png",
+                        "green": "green_minus.png",
+                        "yellow": "yellow_minus.png"
+                    }
+                },
+                "ab_plus": {
+                    "position": {
+                        "x": 658,
+                        "y": 761
+                    },
+                    "image": {
+                        "red": "red_plus.png",
+                        "green": "green_plus.png",
+                        "yellow": "yellow_plus.png"
+                    }
+                },
+                "ab_minus": {
+                    "position": {
+                        "x": 908,
+                        "y": 761
+                    },
+                    "image": {
+                        "red": "red_minus.png",
+                        "green": "green_minus.png",
+                        "yellow": "yellow_minus.png"
+                    }
+                }
+            }
+        },
+        "additional": {
+
+        }
+    }
+}
